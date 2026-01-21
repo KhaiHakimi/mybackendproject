@@ -1,0 +1,28 @@
+ID: 1, Name: Kuala Perlis Jetty, Location: Kuala Perlis, Perlis
+ID: 2, Name: Kuala Kedah Jetty, Location: Kuala Kedah, Kedah
+ID: 3, Name: Kuah Jetty (Langkawi), Location: Kuah, Langkawi
+ID: 4, Name: Tanjung Lembung Port, Location: Langkawi
+ID: 5, Name: Swettenham Pier, Location: Georgetown, Penang
+ID: 6, Name: Sultan Abdul Halim Ferry Terminal, Location: Butterworth, Penang
+ID: 7, Name: Lumut Jetty, Location: Lumut, Perak
+ID: 8, Name: Marina Island Jetty, Location: Lumut, Perak
+ID: 9, Name: Pulau Pangkor Jetty, Location: Pangkor Island
+ID: 10, Name: South Port Passenger Terminal, Location: Port Klang, Selangor
+ID: 11, Name: Pulau Ketam Jetty, Location: Pulau Ketam, Selangor
+ID: 12, Name: Mersing Jetty, Location: Mersing, Johor
+ID: 13, Name: Tanjung Gemok Jetty, Location: Kuala Rompin, Pahang
+ID: 14, Name: Tioman Island Marina, Location: Tioman Island, Pahang
+ID: 15, Name: Jeti Tanjung Emas Muar, Location: Muar, Johor
+ID: 16, Name: Puteri Harbour International Ferry Terminal, Location: Iskandar Puteri, Johor
+ID: 17, Name: Melaka International Ferry Terminal, Location: Melaka City, Melaka
+ID: 18, Name: Dumai Ferry Terminal, Location: Dumai, Indonesia
+ID: 19, Name: Bengkalis Ferry Terminal, Location: Bengkalis, Indonesia
+ID: 20, Name: Batam Centre Ferry Terminal, Location: Batam, Indonesia
+ID: 21, Name: Harbour Bay Ferry Terminal, Location: Batam, Indonesia
+ID: 22, Name: Shahbandar Jetty, Location: Kuala Terengganu
+ID: 23, Name: Merang Jetty, Location: Setiu, Terengganu
+ID: 24, Name: Kuala Besut Jetty, Location: Besut, Terengganu
+ID: 25, Name: Redang Island Jetty, Location: Redang Island
+ID: 26, Name: Perhentian Island Jetty, Location: Perhentian Island
+ID: 27, Name: Marang Jetty, Location: Marang, Terengganu
+ID: 28, Name: Kapas Island Jetty, Location: Kapas Island
