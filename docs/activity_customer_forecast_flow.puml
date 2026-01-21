@@ -1,0 +1,67 @@
+@startuml
+title Activity Diagram: Customer Journey - Check Ferry Safety
+skinparam ConditionEndStyle hline
+skinparam ActivityBackgroundColor White
+skinparam ActivityBorderColor DarkGreen
+skinparam ArrowColor DarkGreen
+
+|#Honeydew|Customer|
+start
+:Open Ferrycast App / Website;
+:View **Home/Landing Page**;
+
+if (Knows Route?) then (Yes)
+    :Enter **Origin** & **Destination**;
+    :Select **Travel Date**;
+    :Click "Search Ferries";
+else (No, Browsing)
+    :Browse **Popular Routes**;
+endif
+
+|#LightBlue|Frontend (Vue.js)|
+:Request Route Options;
+
+|#LightGray|Backend (Laravel)|
+:Fetch Available Schedules;
+:Calculate **Current Safety Score** for each;
+note right
+  Quick Pass:
+  Green (Safe)
+  Amber (Caution)
+  Red (High Risk)
+end note
+
+|Frontend (Vue.js)|
+:Display List of Ferries;
+:Show **Safety Badges** next to times;
+
+|Customer|
+:Select a specific Trip;
+
+|#LightBlue|Frontend (Vue.js)|
+:Request Detailed Forecast;
+
+|#LightGray|Backend (Laravel)|
+:Fetch Detailed Wind/Wave Model;
+:Generate **Navigation Advice**;
+
+|Frontend (Vue.js)|
+:Show **Forecast Dashboard**;
+note right
+  - Hourly Weather
+  - Wave Height Graph
+  - Cancellation Probability
+end note
+
+|Customer|
+:Review Safety Analysis;
+if (Risk is High?) then (Yes)
+    :Check Alternative Dates;
+    :Or **Subscribe to Alerts** (FCM);
+else (No, Safe)
+    :Proceed to Booking / Plan Trip;
+endif
+
+stop
+
+@enduml

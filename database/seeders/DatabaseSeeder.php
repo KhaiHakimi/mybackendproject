@@ -22,6 +22,7 @@ class DatabaseSeeder extends Seeder
                 'name' => 'Ferry Admin',
                 'password' => bcrypt('password'),
                 'is_admin' => true,
+                'phone_number' => '0123456789',
             ]
         );
 
@@ -32,6 +33,7 @@ class DatabaseSeeder extends Seeder
                 'name' => 'Ferry Customer',
                 'password' => bcrypt('password'),
                 'is_admin' => false,
+                'phone_number' => '0198765432',
             ]
         );
 

@@ -1,0 +1,40 @@
+@startuml
+title Activity Diagram: User Journey - Dashboard to Risk Result
+skinparam ConditionEndStyle hline
+skinparam ActivityBackgroundColor White
+skinparam ActivityBorderColor Blue
+skinparam ArrowColor Blue
+
+|User|
+start
+:Log in & Enter **Dashboard**;
+
+|Frontend/System|
+:Display Active Ferry Routes;
+:Fetch Preliminary Status;
+
+|User|
+:Selects a Ferry Route;
+:Clicks **"View Forecast"**;
+
+|Backend & AI|
+:Retrieve Weather Data;
+:Calculate **Risk Score** (AI);
+note right
+  Safe / Caution / High Risk
+end note
+
+|Frontend/System|
+if (Risk is High?) then (Yes)
+  :Display **RED Alert**;
+  :Show "Cancellation Likely";
+else (No)
+  :Display **GREEN Badge**;
+  :Show "Safe to Travel";
+endif
+
+|User|
+:Make Travel Decision;
+stop
+
+@enduml

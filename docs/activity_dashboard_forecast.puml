@@ -1,0 +1,79 @@
+@startuml
+title Activity Diagram: Dashboard & View Forecast
+skinparam ConditionEndStyle hline
+skinparam ActivityBackgroundColor White
+skinparam ActivityBorderColor Navy
+skinparam ArrowColor Navy
+
+|User|
+start
+:Log in to Application;
+:Navigate to **Dashboard**;
+
+|#LightBlue|Frontend (Vue.js)|
+:Request Dashboard Data;
+
+|#LightGray|Backend (Laravel)|
+:Fetch Summary Stats;
+note right
+  - Total Ferries
+  - Active Routes
+  - Current Risk Alerts
+end note
+:Fetch Recent High Risk Routes;
+
+|Frontend (Vue.js)|
+:Render Dashboard View;
+:Display **High Risk Alerts** widget;
+:Display **Quick Actions**;
+
+|User|
+if (Selects Action?) then (Click Specific Ferry)
+  :Click on a **Ferry Card/Row**;
+else (Use Navigation)
+  :Generic Browse;
+  stop
+endif
+
+:Request **Forecast Details** for selected Ferry;
+
+|Frontend (Vue.js)|
+:Navigate to `/ferries/{id}`;
+:Show "Loading Forecast...";
+:Call API `GET /api/ferries/{id}/forecast`;
+
+|Backend (Laravel)|
+:Retrieve Ferry Schedule Info;
+:Fetch Weather Data (Live/Cached);
+if (Risk Prediction Cached?) then (No)
+    |#MistyRose|AI Service (Python)|
+    :Input: Wind, Wave, Ferry Specs;
+    :Calculate **Capsize Risk Score**;
+    :Return Prediction;
+    |Backend (Laravel)|
+    :Cache Prediction Result;
+else (Yes)
+    :Retrieve from Redis/DB;
+endif
+
+:Format Response JSON;
+note right
+  {
+    "route": "Route A",
+    "risk_level": "High",
+    "wind_speed": "45 km/h",
+    "recommendation": "Cancel Trip"
+  }
+end note
+:Send Response;
+
+|Frontend (Vue.js)|
+:Render **Risk Gauge**;
+:Render **Weather Charts** (Chart.js);
+:Display **Safety Recommendation**;
+
+|User|
+:View Forecast Analysis;
+stop
+
+@enduml

@@ -77,8 +77,47 @@ def generate_synthetic_batch(batch_size=5000):
     
     return df, pd.Series(risk_labels)
 
-# ... (Continuous Training Worker remains same) ...
-# ...
+# --- Initial Model Creation ---
+# We create a new, untrained brain.
+model = RandomForestClassifier(n_estimators=100)
+
+def continuous_training_worker():
+    global training_cycle, model, global_X, global_y, training_active
+    
+    print("AI ENGINE: Continuous Learning Module Started.")
+    
+    # Initial training to ensure model is ready immediately
+    # We do a synchronous training first so the API doesn't fail on first request
+    print("Performing initial bootstrap training...")
+    X_init, y_init = generate_synthetic_batch(batch_size=2000)
+    global_X = pd.concat([global_X, X_init])
+    global_y = pd.concat([global_y, y_init])
+    model.fit(global_X, global_y)
+    print("Bootstrap complete. Model is ready.")
+    
+    while training_active:
+        training_cycle += 1
+        
+        # 1. Generate new experience (Synthetic Data)
+        X_new, y_new = generate_synthetic_batch(batch_size=2000)
+        
+        # 2. Add to 'Long Term Memory' (Global Dataset)
+        # We keep the dataset size manageable (e.g., last 50,000 records) to simulate forgetting/refreshing
+        global_X = pd.concat([global_X, X_new]).tail(50000)
+        global_y = pd.concat([global_y, y_new]).tail(50000)
+        
+        # 3. Train the Brain (Fit Model)
+        # We retrain on the accumulated data
+        model.fit(global_X, global_y)
+        
+        print(f"CYCLE {training_cycle}: Model retrained on {len(global_X)} scenarios. Accuracy improved.")
+        
+        # Sleep to simulate time passing (and not kill the CPU)
+        time.sleep(30) 
+
+# Start the worker thread
+training_thread = threading.Thread(target=continuous_training_worker, daemon=True)
+training_thread.start()
 
 @app.route('/predict-risk', methods=['POST'])
 def predict_risk():

@@ -1,0 +1,39 @@
+@startuml
+title Ferrycast - Simple FCM Notification Use Case
+
+actor "Administrator" as Admin
+participant "Ferrycast Portal (Vue.js)" as Frontend
+participant "Laravel Backend" as Backend
+participant "Firebase Cloud Messaging" as FCM
+actor "User Device" as User
+
+== Send Notification ==
+
+Admin -> Frontend: 1. Submit Notification Form\n(Title: "Delay Alert", Body: "Ferry A delayed")
+activate Frontend
+
+Frontend -> Backend: 2. POST /api/notifications/send\n{title, body, topic="all"}
+activate Backend
+
+Backend -> Backend: 3. Store Notification in Database
+
+Backend -> FCM: 4. Send Message (via SDK)\n{notification: {title, body}, topic: "all"}
+activate FCM
+
+FCM --> Backend: 5. Acknowledge Receipt (Message ID)
+
+Backend --> Frontend: 6. Return Success 200 OK
+deactivate Backend
+deactivate FCM
+
+Frontend --> Admin: 7. Show Success Toast "Notification Sent"
+deactivate Frontend
+
+== Receive Notification ==
+
+FCM -> User: 8. Push Notification to Device
+activate User
+User -> User: 9. Display System Tray Notification
+deactivate User
+
+@enduml

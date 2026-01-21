@@ -19,6 +19,7 @@ class Ferry extends Model
         'description',
         'booking_url',
         'ticket_type',
+        'google_place_id',
     ];
 
     protected $casts = [

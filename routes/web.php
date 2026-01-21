@@ -15,11 +15,8 @@ Route::get('/', function () {
     ]);
 });
 
-Route::get('/dashboard', function () {
-    return Inertia::render('Dashboard', [
-        'ports' => \App\Models\Port::all(['id', 'name', 'latitude', 'longitude']),
-    ]);
-})->middleware(['auth', 'verified'])->name('dashboard');
+Route::get('/dashboard', [\App\Http\Controllers\DashboardController::class, 'index'])->middleware(['auth', 'verified'])->name('dashboard');
+Route::get('/dashboard/logs', [\App\Http\Controllers\DashboardController::class, 'systemLogs'])->middleware(['auth', 'verified', 'admin'])->name('dashboard.logs');
 
 Route::middleware('auth')->group(function () {
     Route::get('/profile', [ProfileController::class, 'edit'])->name('profile.edit');
@@ -37,9 +34,10 @@ Route::get('/our-fleet/{ferry}', [\App\Http\Controllers\FerryController::class, 
 // Weather Routes (Accessible by all for safety)
 Route::get('/ports/{port}/weather', [\App\Http\Controllers\WeatherController::class, 'show'])->name('weather.show');
 
-// PUBLIC ACCESS FOR DEMO PURPOSES
-Route::post('/ports/{port}/weather', [\App\Http\Controllers\WeatherController::class, 'store'])->name('weather.store');
+// PUBLIC ACCESS FOR DEMO PURPOSES - MOVED TO ADMIN
+// Route::post('/ports/{port}/weather', [\App\Http\Controllers\WeatherController::class, 'store'])->name('weather.store');
 Route::post('/ports/{port}/weather/refresh', [\App\Http\Controllers\WeatherController::class, 'refresh'])->name('weather.refresh');
+Route::post('/weather/refresh-all', [\App\Http\Controllers\WeatherController::class, 'refreshAll'])->name('weather.refresh_all');
 
 Route::middleware(['auth', 'verified'])->group(function () {
     // Authenticated actions
@@ -49,6 +47,10 @@ Route::middleware(['auth', 'verified'])->group(function () {
     Route::middleware(['admin'])->group(function () {
         Route::resource('ferries', FerryController::class);
         // Schedules: Admin can create/edit/delete. Index is public.
+        Route::post('/schedules/generate', [\App\Http\Controllers\ScheduleController::class, 'generateDaily'])->name('schedules.generate');
         Route::resource('schedules', \App\Http\Controllers\ScheduleController::class)->except(['index', 'show']);
+
+        // Weather Simulation & Data Fetching
+        Route::post('/ports/{port}/weather', [\App\Http\Controllers\WeatherController::class, 'store'])->name('weather.store');
     });
 });

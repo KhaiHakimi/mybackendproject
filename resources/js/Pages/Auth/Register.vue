@@ -1,23 +1,24 @@
 <script setup>
-import GuestLayout from '@/Layouts/GuestLayout.vue';
-import InputError from '@/Components/InputError.vue';
-import InputLabel from '@/Components/InputLabel.vue';
-import PrimaryButton from '@/Components/PrimaryButton.vue';
-import TextInput from '@/Components/TextInput.vue';
-import { Head, Link, useForm } from '@inertiajs/vue3';
+    import GuestLayout from '@/Layouts/GuestLayout.vue'
+    import InputError from '@/Components/InputError.vue'
+    import InputLabel from '@/Components/InputLabel.vue'
+    import PrimaryButton from '@/Components/PrimaryButton.vue'
+    import TextInput from '@/Components/TextInput.vue'
+    import { Head, Link, useForm } from '@inertiajs/vue3'
 
-const form = useForm({
-    name: '',
-    email: '',
-    password: '',
-    password_confirmation: '',
-});
+    const form = useForm({
+        name: '',
+        email: '',
+        phone_number: '',
+        password: '',
+        password_confirmation: '',
+    })
 
-const submit = () => {
-    form.post(route('register'), {
-        onFinish: () => form.reset('password', 'password_confirmation'),
-    });
-};
+    const submit = () => {
+        form.post(route('register'), {
+            onFinish: () => form.reset('password', 'password_confirmation'),
+        })
+    }
 </script>
 
 <template>
@@ -26,12 +27,18 @@ const submit = () => {
 
         <div class="mb-8 text-center">
             <h2 class="text-3xl font-bold text-blue-900">Join FerryCast</h2>
-            <p class="text-blue-600/60 mt-2">Create an account to start your journey</p>
+            <p class="text-blue-600/60 mt-2">
+                Create an account to start your journey
+            </p>
         </div>
 
         <form @submit.prevent="submit" class="space-y-4">
             <div class="animate-fade-in delay-75">
-                <InputLabel for="name" value="Full Name" class="text-blue-900 font-semibold" />
+                <InputLabel
+                    for="name"
+                    value="Full Name"
+                    class="text-blue-900 font-semibold"
+                />
 
                 <TextInput
                     id="name"
@@ -48,7 +55,11 @@ const submit = () => {
             </div>
 
             <div class="mt-4 animate-fade-in delay-100">
-                <InputLabel for="email" value="Email Address" class="text-blue-900 font-semibold" />
+                <InputLabel
+                    for="email"
+                    value="Email Address"
+                    class="text-blue-900 font-semibold"
+                />
 
                 <TextInput
                     id="email"
@@ -63,8 +74,22 @@ const submit = () => {
                 <InputError class="mt-2" :message="form.errors.email" />
             </div>
 
-            <div class="mt-4 animate-fade-in delay-150">
-                <InputLabel for="password" value="Password" class="text-blue-900 font-semibold" />
+            <div class="mt-4">
+                <InputLabel for="phone_number" value="Phone Number" />
+
+                <TextInput
+                    id="phone_number"
+                    type="tel"
+                    class="mt-1 block w-full border-blue-100 focus:border-blue-500 rounded-xl"
+                    v-model="form.phone_number"
+                    required
+                />
+
+                <InputError class="mt-2" :message="form.errors.phone_number" />
+            </div>
+
+            <div class="mt-4">
+                <InputLabel for="password" value="Password" />
 
                 <TextInput
                     id="password"
@@ -112,9 +137,11 @@ const submit = () => {
                 </PrimaryButton>
             </div>
 
-            <div class="mt-8 text-center border-t border-blue-50 pt-6 animate-fade-in delay-300">
+            <div
+                class="mt-8 text-center border-t border-blue-50 pt-6 animate-fade-in delay-300"
+            >
                 <p class="text-sm text-blue-800">
-                    Already have an account? 
+                    Already have an account?
                     <Link
                         :href="route('login')"
                         class="font-bold text-blue-600 hover:text-blue-800 underline underline-offset-4"
@@ -128,10 +155,19 @@ const submit = () => {
 </template>
 
 <style scoped>
-.delay-75 { animation-delay: 0.075s; }
-.delay-100 { animation-delay: 0.1s; }
-.delay-150 { animation-delay: 0.15s; }
-.delay-200 { animation-delay: 0.2s; }
-.delay-300 { animation-delay: 0.3s; }
+    .delay-75 {
+        animation-delay: 0.075s;
+    }
+    .delay-100 {
+        animation-delay: 0.1s;
+    }
+    .delay-150 {
+        animation-delay: 0.15s;
+    }
+    .delay-200 {
+        animation-delay: 0.2s;
+    }
+    .delay-300 {
+        animation-delay: 0.3s;
+    }
 </style>
-

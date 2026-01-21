@@ -1,26 +1,38 @@
 <script setup>
-import { ref } from 'vue';
-import ApplicationLogo from '@/Components/ApplicationLogo.vue';
-import Dropdown from '@/Components/Dropdown.vue';
-import DropdownLink from '@/Components/DropdownLink.vue';
-import NavLink from '@/Components/NavLink.vue';
-import ResponsiveNavLink from '@/Components/ResponsiveNavLink.vue';
-import { Link } from '@inertiajs/vue3';
+    import { ref } from 'vue'
+    import ApplicationLogo from '@/Components/ApplicationLogo.vue'
+    import Dropdown from '@/Components/Dropdown.vue'
+    import DropdownLink from '@/Components/DropdownLink.vue'
+    import NavLink from '@/Components/NavLink.vue'
+    import ResponsiveNavLink from '@/Components/ResponsiveNavLink.vue'
+    import { Link } from '@inertiajs/vue3'
 
-const showingNavigationDropdown = ref(false);
+    const showingNavigationDropdown = ref(false)
 </script>
 
 <template>
     <div class="min-h-screen bg-cream-50 relative">
-        
         <!-- Animated Background Waves (Optional: Subtle for authenticated pages) -->
-        <div class="fixed bottom-0 left-0 w-full overflow-hidden leading-none rotate-180 z-0 pointer-events-none opacity-20">
-            <svg class="relative block w-[calc(100%+1.3px)] h-[100px]" data-name="Layer 1" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 120" preserveAspectRatio="none">
-                <path d="M321.39,56.44c58-10.79,114.16-30.13,172-41.86,82.39-16.72,168.19-17.73,250.45-.39C823.78,31,906.67,72,985.66,92.83c70.05,18.48,146.53,26.09,214.34,3V0H0V27.35A600.21,600.21,0,0,0,321.39,56.44Z" class="fill-blue-200"></path>
+        <div
+            class="fixed bottom-0 left-0 w-full overflow-hidden leading-none rotate-180 z-0 pointer-events-none opacity-20"
+        >
+            <svg
+                class="relative block w-[calc(100%+1.3px)] h-[100px]"
+                data-name="Layer 1"
+                xmlns="http://www.w3.org/2000/svg"
+                viewBox="0 0 1200 120"
+                preserveAspectRatio="none"
+            >
+                <path
+                    d="M321.39,56.44c58-10.79,114.16-30.13,172-41.86,82.39-16.72,168.19-17.73,250.45-.39C823.78,31,906.67,72,985.66,92.83c70.05,18.48,146.53,26.09,214.34,3V0H0V27.35A600.21,600.21,0,0,0,321.39,56.44Z"
+                    class="fill-blue-200"
+                ></path>
             </svg>
         </div>
 
-        <nav class="border-b border-blue-800 bg-blue-900 relative z-50 shadow-lg">
+        <nav
+            class="border-b border-blue-800 bg-blue-900 relative z-50 shadow-lg"
+        >
             <!-- Primary Navigation Menu -->
             <div class="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
                 <div class="flex h-16 justify-between">
@@ -35,17 +47,32 @@ const showingNavigationDropdown = ref(false);
                         </div>
 
                         <!-- Navigation Links -->
-                        <div class="hidden space-x-8 sm:-my-px sm:ms-10 sm:flex">
-                            <NavLink :href="route('dashboard')" :active="route().current('dashboard')">
+                        <div
+                            class="hidden space-x-8 sm:-my-px sm:ms-10 sm:flex"
+                        >
+                            <NavLink
+                                :href="route('dashboard')"
+                                :active="route().current('dashboard')"
+                            >
                                 Dashboard
                             </NavLink>
-                            <NavLink :href="route('schedules.index')" :active="route().current('schedules.index')">
+                            <NavLink
+                                :href="route('schedules.index')"
+                                :active="route().current('schedules.index')"
+                            >
                                 Schedules
                             </NavLink>
-                            <NavLink href="/our-fleet" :active="$page.url.startsWith('/our-fleet')">
+                            <NavLink
+                                href="/our-fleet"
+                                :active="$page.url.startsWith('/our-fleet')"
+                            >
                                 Our Fleet
                             </NavLink>
-                            <NavLink v-if="$page.props.auth.user.is_admin" :href="route('ferries.index')" :active="route().current('ferries.index')">
+                            <NavLink
+                                v-if="$page.props.auth.user.is_admin"
+                                :href="route('ferries.index')"
+                                :active="route().current('ferries.index')"
+                            >
                                 Manage Ferries
                             </NavLink>
                         </div>
@@ -83,7 +110,11 @@ const showingNavigationDropdown = ref(false);
                                     <DropdownLink :href="route('profile.edit')">
                                         Profile
                                     </DropdownLink>
-                                    <DropdownLink :href="route('logout')" method="post" as="button">
+                                    <DropdownLink
+                                        :href="route('logout')"
+                                        method="post"
+                                        as="button"
+                                    >
                                         Log Out
                                     </DropdownLink>
                                 </template>
@@ -94,14 +125,23 @@ const showingNavigationDropdown = ref(false);
                     <!-- Hamburger -->
                     <div class="-me-2 flex items-center sm:hidden">
                         <button
-                            @click="showingNavigationDropdown = !showingNavigationDropdown"
+                            @click="
+                                showingNavigationDropdown =
+                                    !showingNavigationDropdown
+                            "
                             class="inline-flex items-center justify-center rounded-md p-2 text-blue-200 transition duration-150 ease-in-out hover:bg-blue-800 hover:text-white focus:outline-none"
                         >
-                            <svg class="h-6 w-6" stroke="currentColor" fill="none" viewBox="0 0 24 24">
+                            <svg
+                                class="h-6 w-6"
+                                stroke="currentColor"
+                                fill="none"
+                                viewBox="0 0 24 24"
+                            >
                                 <path
                                     :class="{
                                         hidden: showingNavigationDropdown,
-                                        'inline-flex': !showingNavigationDropdown,
+                                        'inline-flex':
+                                            !showingNavigationDropdown,
                                     }"
                                     stroke-linecap="round"
                                     stroke-linejoin="round"
@@ -111,7 +151,8 @@ const showingNavigationDropdown = ref(false);
                                 <path
                                     :class="{
                                         hidden: !showingNavigationDropdown,
-                                        'inline-flex': showingNavigationDropdown,
+                                        'inline-flex':
+                                            showingNavigationDropdown,
                                     }"
                                     stroke-linecap="round"
                                     stroke-linejoin="round"
@@ -133,16 +174,29 @@ const showingNavigationDropdown = ref(false);
                 class="sm:hidden bg-blue-900 border-t border-blue-800"
             >
                 <div class="space-y-1 pb-3 pt-2">
-                    <ResponsiveNavLink :href="route('dashboard')" :active="route().current('dashboard')">
+                    <ResponsiveNavLink
+                        :href="route('dashboard')"
+                        :active="route().current('dashboard')"
+                    >
                         Dashboard
                     </ResponsiveNavLink>
-                    <ResponsiveNavLink :href="route('schedules.index')" :active="route().current('schedules.index')">
+                    <ResponsiveNavLink
+                        :href="route('schedules.index')"
+                        :active="route().current('schedules.index')"
+                    >
                         Schedules
                     </ResponsiveNavLink>
-                    <ResponsiveNavLink href="/our-fleet" :active="$page.url.startsWith('/our-fleet')">
+                    <ResponsiveNavLink
+                        href="/our-fleet"
+                        :active="$page.url.startsWith('/our-fleet')"
+                    >
                         Our Fleet
                     </ResponsiveNavLink>
-                    <ResponsiveNavLink v-if="$page.props.auth.user.is_admin" :href="route('ferries.index')" :active="route().current('ferries.index')">
+                    <ResponsiveNavLink
+                        v-if="$page.props.auth.user.is_admin"
+                        :href="route('ferries.index')"
+                        :active="route().current('ferries.index')"
+                    >
                         Manage Ferries
                     </ResponsiveNavLink>
                 </div>
@@ -162,7 +216,11 @@ const showingNavigationDropdown = ref(false);
                         <ResponsiveNavLink :href="route('profile.edit')">
                             Profile
                         </ResponsiveNavLink>
-                        <ResponsiveNavLink :href="route('logout')" method="post" as="button">
+                        <ResponsiveNavLink
+                            :href="route('logout')"
+                            method="post"
+                            as="button"
+                        >
                             Log Out
                         </ResponsiveNavLink>
                     </div>
@@ -183,4 +241,3 @@ const showingNavigationDropdown = ref(false);
         </main>
     </div>
 </template>
-

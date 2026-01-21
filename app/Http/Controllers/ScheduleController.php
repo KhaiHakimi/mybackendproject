@@ -6,6 +6,7 @@ use App\Models\Ferry;
 use App\Models\Port;
 use App\Models\Schedule;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Cache;
 use Inertia\Inertia;
 
 class ScheduleController extends Controller
@@ -77,10 +78,19 @@ class ScheduleController extends Controller
 
         $schedules = $query->orderBy('departure_time')->get();
 
+        // Optimized data fetching with caching
+        $ferriesList = Cache::remember('ferries.list_all', 3600, function () {
+            return Ferry::all();
+        });
+
+        $activePorts = Cache::remember('ports.active', 3600, function () {
+            return Port::whereHas('departures')->orWhereHas('arrivals')->get();
+        });
+
         return Inertia::render('Schedules/Index', [
             'schedules' => $schedules,
-            'ferries' => Ferry::all(),
-            'ports' => Port::all(),
+            'ferries' => $ferriesList,
+            'ports' => $activePorts,
             'nearestPorts' => $nearestPorts, // Returns Collection
             'userLocation' => $latitude && $longitude ? ['lat' => $latitude, 'lng' => $longitude] : null,
             'filters' => $request->only(['date', 'destination_port_id', 'time_of_day', 'latitude', 'longitude', 'state']),
@@ -101,13 +111,40 @@ class ScheduleController extends Controller
 
         Schedule::create($validated);
 
+        Cache::forget('ports.active');
+
         return redirect()->back()->with('success', 'Schedule created successfully.');
+    }
+
+    public function update(Request $request, Schedule $schedule)
+    {
+        $validated = $request->validate([
+            'ferry_id' => 'required|exists:ferries,id',
+            'origin_port_id' => 'required|exists:ports,id',
+            'destination_port_id' => 'required|exists:ports,id|different:origin_port_id',
+            'departure_time' => 'required|date',
+            'arrival_time' => 'required|date|after:departure_time',
+            'price' => 'required|numeric|min:0',
+        ]);
+
+        $schedule->update($validated);
+
+        return redirect()->back()->with('success', 'Schedule updated successfully.');
     }
 
     public function destroy(Schedule $schedule)
     {
         $schedule->delete();
 
+        Cache::forget('ports.active');
+
         return redirect()->back()->with('success', 'Schedule deleted.');
+    }
+
+    public function generateDaily()
+    {
+        \Illuminate\Support\Facades\Artisan::call('schedules:generate-daily');
+
+        return redirect()->back()->with('success', 'Daily schedule generation triggered successfully.');
     }
 }

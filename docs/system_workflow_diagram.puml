@@ -1,0 +1,54 @@
+@startuml
+title Ferrycast - Overall System Workflow
+skinparam ConditionEndStyle hline
+skinparam ActivityBackgroundColor White
+skinparam ActivityBorderColor Black
+skinparam ArrowColor Black
+
+participant "Admin / System" as Trigger
+
+|#Lavender|Data Ingestion Layer (Laravel Scheduler)|
+start
+:Trigger Scheduled Job (Every Hour);
+:Fetch External Weather Data;
+note right
+  - OpenWeatherMap / MetService
+  - Wind Speed, Wave Height, Direction
+end note
+
+:Store Raw Weather Data (Database);
+
+|#MistyRose|Intelligence Layer (Python Service)|
+:Retrieve pending Schedule/Weather pairs;
+:Load **Machine Learning Model**;
+note right
+  Input:
+  - Ferry Specifications (Tonnage, Stability)
+  - Sea Conditions
+end note
+
+:Calculate **Capsize Probability**;
+:Return Risk Score & Classification;
+
+|#LightGray|Application Core (Laravel)|
+:Update Ferry Schedule Records with Risk;
+if (Risk Level > Threshold?) then (Yes - Danger)
+  :Trigger **FCM Alert Logic**;
+  :Send Push Notification to Subscribers;
+else (No - Safe)
+  :Log Status as Normal;
+endif
+
+|#LightCyan|Presentation Layer (Vue.js)|
+:User/Customer Opens App;
+:Request Schedule & Risk Data;
+:Display **Dashboard & Forecasts**;
+note right
+  Includes:
+  - Color-coded Risk Levels
+  - Recommendation Hints
+end note
+
+stop
+
+@enduml

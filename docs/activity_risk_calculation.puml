@@ -1,0 +1,72 @@
+@startuml
+title Activity Diagram: User Journey & AI Risk Calculation
+skinparam ConditionEndStyle hline
+skinparam ActivityBackgroundColor White
+skinparam ActivityBorderColor DarkRed
+skinparam ArrowColor DarkRed
+
+|User|
+start
+:Log in to **Dashboard**;
+:Select Route & Click **"View Forecast"**;
+
+|#LightGray|Laravel Backend|
+:Received API Request;
+:Extract Weather Parameters
+(Wind, Waves, Visibility);
+:Send POST /predict-risk to AI Service;
+
+|#MistyRose|AI Service (Python)|
+:Receive JSON Payload;
+:Format Input as DataFrame
+[wind_speed, wave_height, visibility];
+
+partition "Random Forest Prediction" {
+    :Input Data into Model;
+    :Calculate Probabilities (predict_proba);
+    note right
+      P(Safe)
+      P(Caution)
+      P(High Risk)
+    end note
+}
+
+partition "Cancellation Probability Logic" {
+    :Apply Weighted Formula;
+    note right
+      Prob = (P(High) * 100)
+           + (P(Caution) * 40)
+    end note
+    :Clamp result (0.1% - 99.9%);
+}
+
+if (Prob > 75% ?) then (Yes)
+    :Set Status = **High Risk**;
+elseif (Prob > 30% ?) then (Yes)
+    :Set Status = **Caution**;
+else (No)
+    :Set Status = **Safe**;
+endif
+
+:Construct JSON Response;
+note right
+  {
+    "risk_score": 85.5,
+    "risk_status": "High Risk"
+  }
+end note
+
+|#LightGray|Laravel Backend|
+:Receive Risk Analysis;
+:Return Data to Frontend;
+
+|User|
+if (Risk is High?) then (Yes)
+    :View **RED Alert** (Cancellation Likely);
+else (No)
+    :View **Green/Amber** (Safe/Caution);
+endif
+:Make Travel Decision;
+stop
+
+@enduml

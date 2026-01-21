@@ -1,0 +1,69 @@
+@startuml
+left to right direction
+skinparam packageStyle rectangle
+skinparam usecase {
+    BackgroundColor White
+    BorderColor Navy
+    ArrowColor Navy
+    Shadowing false
+}
+skinparam actor {
+    BackgroundColor White
+    BorderColor Navy
+}
+
+actor "Ferrycast Admin" as Admin
+actor "Traveller / User" as User
+actor "Firebase Cloud Messaging\n(FCM)" as FCM <<External Service>>
+
+rectangle "Ferrycast Application" {
+
+    package "Frontend (Vue.js)" {
+        usecase "Request Notification Permission" as UC_Perms
+        usecase "Register Device Token" as UC_Token
+        usecase "Receive Foreground Alert" as UC_Fore
+    }
+
+    package "Backend (Laravel)" {
+        usecase "Authenticate Admin" as UC_Auth
+        usecase "Compose Risk Alert" as UC_Compose
+        usecase "Select Recipients\n(All vs Topic)" as UC_Target
+        usecase "Dispatch Notification" as UC_Send
+        usecase "Log Notification History" as UC_Log
+    }
+}
+
+' User Flows
+User -- UC_Perms : "1. Clicks Allow"
+UC_Perms ..> UC_Token : <<include>>
+UC_Token -- User : "Auto-sends token to DB"
+FCM ..> UC_Fore : "Push to browser"
+UC_Fore -- User : "Views Toast"
+
+' Admin Flows
+Admin -- UC_Auth
+UC_Auth ..> UC_Compose : <<precondition>>
+Admin -- UC_Compose : "2. Enters Details"
+UC_Compose ..> UC_Target : <<include>>
+UC_Compose ..> UC_Send : "Submits"
+
+' System Logic
+UC_Send ..> UC_Log : <<include>>
+UC_Send ..> FCM : "3. API Call via SDK"
+FCM ..> User : "4. Background Push"
+
+note right of UC_Compose
+    Details include:
+    - Title (e.g., "Storm Warning")
+    - Body (e.g., "Ferry suspended")
+    - Risk Level (High/Med/Low)
+end note
+
+note bottom of UC_Target
+    Targeting types:
+    - Broadcast (All Users)
+    - Subscribe to specific
+      Ferry Route (Topic)
+end note
+
+@enduml

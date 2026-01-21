@@ -1,25 +1,26 @@
 <script setup>
-import InputError from '@/Components/InputError.vue';
-import InputLabel from '@/Components/InputLabel.vue';
-import PrimaryButton from '@/Components/PrimaryButton.vue';
-import TextInput from '@/Components/TextInput.vue';
-import { Link, useForm, usePage } from '@inertiajs/vue3';
+    import InputError from '@/Components/InputError.vue'
+    import InputLabel from '@/Components/InputLabel.vue'
+    import PrimaryButton from '@/Components/PrimaryButton.vue'
+    import TextInput from '@/Components/TextInput.vue'
+    import { Link, useForm, usePage } from '@inertiajs/vue3'
 
-defineProps({
-    mustVerifyEmail: {
-        type: Boolean,
-    },
-    status: {
-        type: String,
-    },
-});
+    defineProps({
+        mustVerifyEmail: {
+            type: Boolean,
+        },
+        status: {
+            type: String,
+        },
+    })
 
-const user = usePage().props.auth.user;
+    const user = usePage().props.auth.user
 
-const form = useForm({
-    name: user.name,
-    email: user.email,
-});
+    const form = useForm({
+        name: user.name,
+        email: user.email,
+        phone_number: user.phone_number,
+    })
 </script>
 
 <template>
@@ -52,6 +53,21 @@ const form = useForm({
                 />
 
                 <InputError class="mt-2" :message="form.errors.name" />
+            </div>
+
+            <div>
+                <InputLabel for="phone_number" value="Phone Number" />
+
+                <TextInput
+                    id="phone_number"
+                    type="text"
+                    class="mt-1 block w-full"
+                    v-model="form.phone_number"
+                    required
+                    autocomplete="tel"
+                />
+
+                <InputError class="mt-2" :message="form.errors.phone_number" />
             </div>
 
             <div>

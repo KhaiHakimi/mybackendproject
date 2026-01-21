@@ -86,7 +86,7 @@ class FerryDetailsSeeder extends Seeder
                 'amenities' => $ferry->amenities ?? Arr::random($amenities, min(4, count($amenities))),
                 'image_path' => $ferry->image_path ?? $image,
                 'booking_url' => $ferry->booking_url ?? 'https://www.easybook.com/en-my/ferry',
-                'ticket_type' => $ferry->ticket_type ?? $ticketType
+                'ticket_type' => $ferry->ticket_type ?? $ticketType,
             ]);
         }
     }

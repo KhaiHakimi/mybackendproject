@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Models\Ferry;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Storage;
 use Inertia\Inertia;
 
@@ -14,7 +15,9 @@ class FerryController extends Controller
      */
     public function index()
     {
-        $ferries = Ferry::latest()->get();
+        $ferries = Cache::remember('ferries.all', 3600, function () {
+            return Ferry::latest()->get();
+        });
 
         return Inertia::render('Ferries/Index', [
             'ferries' => $ferries,
@@ -26,7 +29,9 @@ class FerryController extends Controller
      */
     public function publicIndex()
     {
-        $ferries = Ferry::latest()->get();
+        $ferries = Cache::remember('ferries.all', 3600, function () {
+            return Ferry::latest()->get();
+        });
 
         return Inertia::render('Ferries/PublicIndex', [
             'ferries' => $ferries,
@@ -66,6 +71,8 @@ class FerryController extends Controller
         $validated['price'] = $validated['price'] ?? 'N/A';
 
         Ferry::create($validated);
+
+        Cache::forget('ferries.all');
 
         return redirect()->back()->with('success', 'Ferry added successfully.');
     }
@@ -131,6 +138,8 @@ class FerryController extends Controller
 
         $ferry->update($validated);
 
+        Cache::forget('ferries.all');
+
         return redirect()->back()->with('success', 'Ferry updated successfully.');
     }
 
@@ -141,56 +150,76 @@ class FerryController extends Controller
     {
         $ferry->delete();
 
+        Cache::forget('ferries.all');
+
         return redirect()->back()->with('success', 'Ferry deleted successfully.');
     }
 
     /**
      * Display the specified resource for public view.
      */
-    public function publicShow(Ferry $ferry)
+    /**
+     * Display the specified resource for public view.
+     */
+    public function publicShow(Ferry $ferry, \App\Services\GooglePlacesService $googlePlaces)
     {
-        $ferry->load(['reviews.user', 'schedules']);
+        $ferry->load(['schedules']);
+        // Note: We no longer load local 'reviews' relationship as we use external sources.
 
-        // Calculate rating distribution
-        $ratingDistribution = [
-            5 => $ferry->reviews->where('rating', 5)->count(),
-            4 => $ferry->reviews->where('rating', 4)->count(),
-            3 => $ferry->reviews->where('rating', 3)->count(),
-            2 => $ferry->reviews->where('rating', 2)->count(),
-            1 => $ferry->reviews->where('rating', 1)->count(),
-        ];
+        $googleReviews = [];
+        $ratingDistribution = [5 => 0, 4 => 0, 3 => 0, 2 => 0, 1 => 0];
+
+        // Fetch external reviews if linked
+        $placeDetails = null;
+
+        if ($ferry->google_place_id) {
+            // Cache external data for 24 hours (1440 mins) to avoid hitting API limit and improve speed
+            $placeDetails = Cache::remember("ferry.{$ferry->id}.google_details", 1440 * 60, function () use ($ferry, $googlePlaces) {
+                return $googlePlaces->getPlaceDetails($ferry->google_place_id);
+            });
+
+            if ($placeDetails) {
+                // Update local cache of rating (optional, but good for list views)
+                // We only update if it has changed significantly to avoid DB thrashing
+                if ($ferry->rating != ($placeDetails['rating'] ?? $ferry->rating)) {
+                    $ferry->update([
+                        'rating' => $placeDetails['rating'] ?? $ferry->rating,
+                        'reviews_count' => $placeDetails['user_ratings_total'] ?? $ferry->reviews_count,
+                    ]);
+                    // If we updated the ferry, invalidate list cache
+                    Cache::forget('ferries.all');
+                }
+
+                if (isset($placeDetails['reviews'])) {
+                    $googleReviews = $googlePlaces->formatReviews($placeDetails['reviews']);
+
+                    // Approximate distribution from available reviews (limit of 5 usually)
+                    foreach ($placeDetails['reviews'] as $r) {
+                        $rating = round($r['rating']);
+                        if (isset($ratingDistribution[$rating])) {
+                            $ratingDistribution[$rating]++;
+                        }
+                    }
+                }
+            }
+        }
+
+        // Pass 'reviews' as a merged list (currently just Google, but extensible)
+        $ferry->reviews = $googleReviews;
 
         return Inertia::render('Ferries/PublicShow', [
             'ferry' => $ferry,
             'ratingDistribution' => $ratingDistribution,
+            'externalSource' => true, // Flag for frontend to know these are external
         ]);
     }
 
     /**
      * Store a new review for a ferry.
+     * DEPRECATED: Reviews are now handled via external platforms (Google Maps).
      */
     public function storeReview(Request $request, Ferry $ferry)
     {
-        $validated = $request->validate([
-            'rating' => 'required|integer|min:1|max:5',
-            'comment' => 'nullable|string|max:1000',
-        ]);
-
-        $ferry->reviews()->create([
-            'user_id' => auth()->id(),
-            'rating' => $validated['rating'],
-            'comment' => $validated['comment'],
-        ]);
-
-        // Update Ferry aggregate ratings
-        $newAvg = $ferry->reviews()->avg('rating');
-        $newCount = $ferry->reviews()->count();
-
-        $ferry->update([
-            'rating' => $newAvg,
-            'reviews_count' => $newCount,
-        ]);
-
-        return redirect()->back()->with('success', 'Review submitted successfully!');
+        return redirect()->back()->with('error', 'Review submission is disabled. Please review us on Google Maps.');
     }
 }
