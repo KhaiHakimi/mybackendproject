@@ -201,8 +201,9 @@ async function updateWeather() {
     const layerName = layerMap[props.weatherOverlay];
     if (layerName) {
         weatherLayer = L.tileLayer(`https://tile.openweathermap.org/map/${layerName}/{z}/{x}/{y}.png?appid=${apiKey}`, {
-            opacity: 0.6,
-            zIndex: 10
+            opacity: 1.0,
+            zIndex: 10,
+            maxZoom: 19
         }).addTo(map);
     }
 }
