@@ -97,8 +97,7 @@ class GeoIntelligenceService
                 'port' => $port,
                 'distance' => $distance,
                 'risk_status' => $risk,
-                'risk_score' => $riskScore,
-                'is_safe' => in_array($risk, ['Low Risk', 'Caution', 'Unknown']), // Treat Caution as relatively safe compared to High Risk
+                'is_safe' => in_array($risk, ['Safe', 'Low Risk', 'Caution', 'Unknown']), // Treat Caution as relatively safe compared to High Risk
             ];
         }
 
