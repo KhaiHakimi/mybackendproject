@@ -735,18 +735,31 @@
                                     Interactive Route Map
                                 </h3>
                                 <!-- Search Bar Replacement -->
-                                <!-- Find My Location Button (Replaces Search Bar) -->
-                                <button
-                                    @click="getCurrentUserLocation"
-                                    class="bg-blue-600 px-6 py-2 rounded-full text-white font-bold shadow-lg hover:bg-blue-700 transition transform hover:scale-105 whitespace-nowrap flex items-center gap-2"
-                                    :disabled="isSearching"
-                                >
-                                    <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
-                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
-                                    </svg>
-                                    {{ isSearching ? 'Locating...' : 'My Location' }}
-                                </button>
+                                <div class="flex gap-2 w-full max-w-md">
+                                    <div class="relative flex-grow">
+                                        <input
+                                            v-model="searchQuery"
+                                            @keyup.enter="searchLocation"
+                                            type="text"
+                                            placeholder="Where are you? (e.g. Kuantan)"
+                                            class="w-full pl-4 pr-12 py-2 rounded-full border border-blue-200 focus:border-blue-500 focus:ring focus:ring-blue-200 outline-none shadow-sm"
+                                        >
+                                        <!-- Current Location Button -->
+                                        <button @click="getCurrentUserLocation" class="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-blue-600">
+                                             <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
+                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
+                                            </svg>
+                                        </button>
+                                    </div>
+                                    <button
+                                        @click="searchLocation"
+                                        class="bg-blue-600 px-6 py-2 rounded-full text-white font-bold shadow-lg hover:bg-blue-700 transition transform hover:scale-105 whitespace-nowrap"
+                                        :disabled="isSearching"
+                                    >
+                                        Search
+                                    </button>
+                                </div>
                             </div>
 
                             <div
