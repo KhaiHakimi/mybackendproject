@@ -28,7 +28,7 @@ class WeatherService
             ]);
 
             $windSpeed = 0;
-            $precipitation = 0;
+
             $visibility = 10;
             $waveHeight = 0;
 
@@ -41,8 +41,7 @@ class WeatherService
                 // Visibility: OWM returns meters, convert to km
                 $visibility = ($data['visibility'] ?? 10000) / 1000;
                 
-                // Precipitation: Check rain (1h or 3h)
-                $precipitation = $data['rain']['1h'] ?? ($data['rain']['3h'] ?? 0);
+
             }
 
             // Note: OpenWeatherMap Standard does not provide Wave Height.
@@ -64,7 +63,7 @@ class WeatherService
                 'wind_speed' => $windSpeed,
                 'wave_height' => $waveHeight,
                 'visibility' => $visibility,
-                'precipitation' => $precipitation,
+
                 'tide_level' => 1.0, // Mock for now
                 'recorded_at' => now(),
             ];
@@ -131,13 +130,13 @@ class WeatherService
                 $wavePeriod = 0;
                 $swellHeight = 0;
                 $visibility = 10;
-                $precipitation = 0;
+
 
                 if ($response->successful()) {
                     $data = $response->json();
                     $windSpeed = ($data['wind']['speed'] ?? 0) * 3.6; // m/s to km/h
                     $visibility = ($data['visibility'] ?? 10000) / 1000; // m to km
-                    $precipitation = $data['rain']['1h'] ?? ($data['rain']['3h'] ?? 0);
+
                 }
 
                 if ($marineResponse->successful()) {
@@ -155,7 +154,7 @@ class WeatherService
                     'wave_period' => $wavePeriod,
                     'swell_height' => $swellHeight,
                     'visibility' => $visibility,
-                    'precipitation' => $precipitation,
+
                 ];
 
                 // AI Risk Analysis (Delegated to Main Engine)

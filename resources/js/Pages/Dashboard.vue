@@ -784,13 +784,7 @@
                                     🌪️ Wind
                                 </button>
 
-                                <button 
-                                    @click="selectedOverlay = 'precipitation'"
-                                    class="px-4 py-1.5 rounded-full text-xs font-bold transition border"
-                                    :class="selectedOverlay === 'precipitation' ? 'bg-blue-600 text-white border-blue-600 shadow-md' : 'bg-white text-gray-600 border-gray-200 hover:bg-gray-50'"
-                                >
-                                    🌧️ Rain
-                                </button>
+
                                 <button 
                                     @click="selectedOverlay = 'clouds'"
                                     class="px-4 py-1.5 rounded-full text-xs font-bold transition border"

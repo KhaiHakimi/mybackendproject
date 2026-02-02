@@ -81,7 +81,7 @@ class WeatherController extends Controller
             'wave_height' => 'required|numeric|min:0',
             'visibility' => 'nullable|numeric|min:0',
             'tide_level' => 'nullable|numeric',
-            'precipitation' => 'nullable|numeric|min:0',
+
         ]);
 
         // Basic Risk Logic (Duplicated from Service for manual overrides)

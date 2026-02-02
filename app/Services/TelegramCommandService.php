@@ -277,7 +277,7 @@ class TelegramCommandService
             "<b>Risk Score:</b> {$weather->risk_score}%\n\n".
             "💨 <b>Wind:</b> {$weather->wind_speed} km/h\n".
             "🌊 <b>Waves:</b> {$weather->wave_height} m\n".
-            "🌧 <b>Rain:</b> {$weather->precipitation} mm\n".
+
             "👁 <b>Visibility:</b> {$weather->visibility} km\n\n".
             '<i>Analysis Time: '.now()->toDateTimeString().'</i>';
             

@@ -13,8 +13,7 @@ class WeatherData extends Model
         'wave_height',
         'visibility',
         'tide_level',
-        'precipitation',
-        'precipitation',
+
         'risk_score',
         'risk_status',
     ];

@@ -192,7 +192,7 @@ async function updateWeather() {
 
     const layerMap = {
         'clouds': 'clouds_new',
-        'precipitation': 'precipitation_new',
+
         'pressure': 'pressure_new',
         'temp': 'temp_new',
     };

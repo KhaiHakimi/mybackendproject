@@ -103,20 +103,7 @@
                                         ></span
                                     >
                                 </div>
-                                <div
-                                    class="flex justify-between items-center bg-blue-50/50 p-4 rounded-2xl border border-blue-50"
-                                >
-                                    <span class="text-blue-800 font-semibold"
-                                        >Precipitation</span
-                                    >
-                                    <span
-                                        class="text-2xl font-black text-blue-900"
-                                        >{{ weather.precipitation || '0' }}
-                                        <span class="text-sm font-normal"
-                                            >mm</span
-                                        ></span
-                                    >
-                                </div>
+
                             </div>
                             <div
                                 class="mt-8 pt-6 border-t border-blue-50 flex items-center justify-between text-blue-400"
