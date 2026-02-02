@@ -312,7 +312,7 @@
             <div v-if="isAuthPage" class="mb-6 animate-fade-in-down">
                 <Link href="/">
                     <img
-                        src="/images/logo.png"
+                        :src="'/images/logo.png'"
                         alt="FerryCast Logo"
                         class="w-20 h-20 mx-auto drop-shadow-xl object-contain"
                     />

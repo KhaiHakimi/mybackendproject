@@ -1,188 +1,221 @@
 <script setup>
-    import { onMounted, ref, watch } from 'vue'
+import { onMounted, ref, watch, onUnmounted } from 'vue';
+import L from 'leaflet';
+import 'leaflet/dist/leaflet.css';
+import 'leaflet-velocity/dist/leaflet-velocity.css';
 
-    const props = defineProps({
-        markers: {
-            type: Array,
-            default: () => [],
-        },
-        routes: {
-            type: Array, // Array of { id, path: [{lat, lng}, {lat, lng}], color, weight }
-            default: () => [],
-        },
-        highlightedRouteId: {
-            type: [String, Number],
-            default: null,
-        },
-        center: {
-            type: Object, // { lat, lng }
-            default: null,
-        },
-        zoom: {
-            type: Number,
-            default: 7,
-        },
-    })
+const props = defineProps({
+    center: { type: Object, default: () => ({ lat: 3.140853, lng: 101.693207 }) }, // KL default
+    zoom: { type: Number, default: 6 },
+    markers: { type: Array, default: () => [] },
+    routes: { type: Array, default: () => [] },
+    weatherOverlay: { type: String, default: null }
+});
 
-    const emit = defineEmits(['marker-click'])
+const emit = defineEmits(['marker-click']);
 
-    const mapContainer = ref(null)
-    const map = ref(null)
-    const googleMarkers = ref([])
-    const googlePolylines = ref([])
+const mapContainer = ref(null);
+let map = null;
+let markerLayer = null;
+let routeLayer = null;
+let weatherLayer = null;
 
-    const initMap = () => {
-        // Check if script is already loaded
-        if (!window.google || !window.google.maps) {
-            if (!document.getElementById('google-maps-script')) {
-                const script = document.createElement('script')
-                script.id = 'google-maps-script'
-                script.src = `https://maps.googleapis.com/maps/api/js?key=${import.meta.env.VITE_GOOGLE_MAPS_API_KEY}&callback=initMapCallback`
-                script.async = true
-                script.defer = true
-                window.initMapCallback = () => {
-                    createMap()
-                }
-                document.head.appendChild(script)
-            } else {
-                // Script exists but maybe not fully loaded? Wait for callback or check interval
-                const checkInterval = setInterval(() => {
-                    if (window.google && window.google.maps) {
-                        clearInterval(checkInterval)
-                        createMap()
-                    }
-                }, 100)
-            }
-        } else {
-            createMap()
+onMounted(async () => {
+    if (!mapContainer.value) return;
+
+    // 1. Shim Global L for Plugins
+    window.L = L;
+
+    // 2. Load Velocity Plugin
+    try {
+        await import('leaflet-velocity');
+        console.log("Leaflet Velocity Loaded via NPM. Available:", !!L.velocityLayer);
+    } catch (e) {
+        console.error("Failed to load leaflet-velocity:", e);
+    }
+
+    // 3. Fix Icons
+    delete L.Icon.Default.prototype._getIconUrl;
+    L.Icon.Default.mergeOptions({
+        iconRetinaUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.7.1/images/marker-icon-2x.png',
+        iconUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.7.1/images/marker-icon.png',
+        shadowUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.7.1/images/marker-shadow.png',
+    });
+
+    // 4. Init Map
+    map = L.map(mapContainer.value).setView([props.center.lat, props.center.lng], props.zoom);
+
+    // Basemap (OSM)
+    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+        attribution: '&copy; OpenStreetMap contributors',
+        maxZoom: 19
+    }).addTo(map);
+
+    // Init Layers
+    markerLayer = L.layerGroup().addTo(map);
+    routeLayer = L.layerGroup().addTo(map);
+
+    updateMarkers();
+    updateRoutes();
+    updateWeather();
+});
+
+onUnmounted(() => {
+    if (map) {
+        map.remove();
+        map = null;
+    }
+});
+
+// Watchers
+watch(() => props.center, (newCenter) => {
+    if(map && newCenter) map.setView([newCenter.lat, newCenter.lng], props.zoom); 
+}, { deep: true });
+
+watch(() => props.zoom, (newZoom) => {
+    if(map) map.setZoom(newZoom);
+});
+
+watch(() => props.markers, updateMarkers, { deep: true });
+watch(() => props.routes, updateRoutes, { deep: true });
+watch(() => props.weatherOverlay, updateWeather);
+
+function updateMarkers() {
+    if (!map || !markerLayer) return;
+    markerLayer.clearLayers();
+    props.markers.forEach(m => {
+        // Use custom icon if provided, otherwise default
+        let markerOptions = {};
+        if (m.icon) {
+             markerOptions.icon = L.icon({
+                iconUrl: m.icon,
+                iconSize: [32, 32],
+                iconAnchor: [16, 32],
+                popupAnchor: [0, -32]
+            });
         }
-    }
 
-    const createMap = () => {
-        if (!mapContainer.value) return
-
-        const defaultCenter = { lat: 4.2105, lng: 101.9758 } // Malaysia center
-
-        map.value = new google.maps.Map(mapContainer.value, {
-            center: props.center || defaultCenter,
-            zoom: props.zoom,
-            styles: [
-                {
-                    featureType: 'poi',
-                    elementType: 'labels',
-                    stylers: [{ visibility: 'off' }],
-                },
-                {
-                    featureType: 'water',
-                    elementType: 'geometry',
-                    stylers: [{ color: '#e9e9f2' }],
-                },
-            ],
-        })
-
-        renderMarkers()
-        renderRoutes()
-    }
-
-    const renderMarkers = () => {
-        if (!map.value) return
-
-        // Clear existing
-        googleMarkers.value.forEach((m) => m.setMap(null))
-        googleMarkers.value = []
-
-        const bounds = new google.maps.LatLngBounds()
-
-        props.markers.forEach((markerData) => {
-            const marker = new google.maps.Marker({
-                position: {
-                    lat: parseFloat(markerData.lat),
-                    lng: parseFloat(markerData.lng),
-                },
-                map: map.value,
-                title: markerData.title,
-                icon:
-                    markerData.icon ||
-                    'http://maps.google.com/mapfiles/ms/icons/red-dot.png',
-            })
-
-            const infoWindow = new google.maps.InfoWindow({
-                content: `<div class="p-2"><strong>${markerData.title}</strong><br/>${markerData.description || ''}</div>`,
-            })
-
-            marker.addListener('click', () => {
-                infoWindow.open(map.value, marker)
-                emit('marker-click', markerData)
-            })
-
-            googleMarkers.value.push(marker)
-            bounds.extend(marker.getPosition())
-        })
-
-        if (props.markers.length > 0 && !props.center) {
-            map.value.fitBounds(bounds)
-            // Avoid zooming in too far if only one marker
-            const listener = google.maps.event.addListener(
-                map.value,
-                'idle',
-                () => {
-                    if (map.value.getZoom() > 12) map.value.setZoom(12)
-                    google.maps.event.removeListener(listener)
-                },
-            )
-        } else if (props.center) {
-            map.value.setCenter(props.center)
-            map.value.setZoom(props.zoom)
+        const marker = L.marker([m.lat, m.lng], markerOptions);
+        
+        if (m.popup) {
+            marker.bindPopup(m.popup);
+        } else if (m.title) {
+            marker.bindTooltip(m.title);
         }
+        
+        marker.on('click', () => emit('marker-click', m));
+        markerLayer.addLayer(marker);
+    });
+}
+
+function updateRoutes() {
+    if (!map || !routeLayer) return;
+    routeLayer.clearLayers();
+    props.routes.forEach(r => {
+        // Safe check for path
+        if (!r.path || r.path.length === 0) return;
+        
+        const latLngs = r.path.map(p => [p.lat, p.lng]);
+        const polyline = L.polyline(latLngs, {
+            color: r.color || 'blue',
+            weight: r.weight || 4,
+            opacity: 0.7
+        });
+        routeLayer.addLayer(polyline);
+    });
+}
+
+// ... (existing code)
+
+async function updateWeather() {
+    if (!map) return;
+    const L = window.L; // Use global L
+    
+    // Remove existing weather layer
+    if (weatherLayer) {
+        if (map.hasLayer(weatherLayer)) {
+            map.removeLayer(weatherLayer);
+        }
+        weatherLayer = null;
     }
 
-    const renderRoutes = () => {
-        if (!map.value) return
+    if (!props.weatherOverlay) return;
 
-        // Clear existing
-        googlePolylines.value.forEach((p) => p.setMap(null))
-        googlePolylines.value = []
+    // Handle Animated Layers (Wind Only)
+    if (props.weatherOverlay === 'wind') {
+        if (!L.velocityLayer) {
+            console.error("Velocity Layer plugin missing!");
+            return;
+        }
 
-        props.routes.forEach((routeData) => {
-            const polyline = new google.maps.Polyline({
-                path: routeData.path,
-                geodesic: true,
-                strokeColor: routeData.color || '#FF0000',
-                strokeOpacity:
-                    routeData.opacity ||
-                    (routeData.id === props.highlightedRouteId ? 1.0 : 0.6),
-                strokeWeight:
-                    routeData.weight ||
-                    (routeData.id === props.highlightedRouteId ? 5 : 3),
-                map: map.value,
-                zIndex: routeData.id === props.highlightedRouteId ? 10 : 1,
-            })
+        console.log("Fetching weather data from: /weather/wind-data");
 
-            googlePolylines.value.push(polyline)
-        })
-    }
+        try {
+            const res = await fetch('/weather/wind-data');
+            const data = await res.json();
+            
+            console.log("Weather Data received:", data);
 
-    watch(() => props.markers, renderMarkers, { deep: true })
-    watch(() => props.routes, renderRoutes, { deep: true })
-    watch(
-        () => props.center,
-        () => {
-            if (map.value && props.center) {
-                map.value.panTo(props.center)
-                map.value.setZoom(props.zoom)
+            if (Array.isArray(data) && data.length > 0) {
+                weatherLayer = L.velocityLayer({
+                    displayValues: true,
+                    displayOptions: {
+                        velocityType: 'Wind',
+                        displayPosition: 'bottomleft',
+                        displayEmptyString: ''
+                    },
+                    data: data,
+                    maxVelocity: 12.0,
+                    velocityScale: 0.015,
+                    lineWidth: 2, 
+                    opacity: 1.0, 
+                    colorScale: ["rgb(255,255,255)", "rgb(240,240,240)"], 
+                    particleAge: 90,
+                    particleMultiplier: 0.004, // Reduced density for cleaner look
+                });
+                
+                weatherLayer.addTo(map);
+                console.log("Velocity Layer Added");
             }
-        },
-    )
-    watch(() => props.highlightedRouteId, renderRoutes)
+        } catch (e) {
+            console.error("Failed to load velocity data", e);
+        }
+        return;
+    }
+    
+    // ... (rest is same)
+    const apiKey = import.meta.env.VITE_OPENWEATHER_API_KEY;
+    if (!apiKey) {
+        console.warn('No OWM API Key found in env');
+        return;
+    }
 
-    onMounted(() => {
-        initMap()
-    })
+    const layerMap = {
+        'clouds': 'clouds_new',
+        'precipitation': 'precipitation_new',
+        'pressure': 'pressure_new',
+        'temp': 'temp_new',
+    };
+    
+    const layerName = layerMap[props.weatherOverlay];
+    if (layerName) {
+        weatherLayer = L.tileLayer(`https://tile.openweathermap.org/map/${layerName}/{z}/{x}/{y}.png?appid=${apiKey}`, {
+            opacity: 0.6,
+            zIndex: 10
+        }).addTo(map);
+    }
+}
 </script>
 
 <template>
-    <div
-        ref="mapContainer"
-        class="w-full h-full rounded-xl overflow-hidden shadow-sm bg-gray-100"
-    ></div>
+    <div ref="mapContainer" class="h-full w-full z-0" style="min-height: 400px;"></div>
 </template>
+
+<style>
+/* Ensure map takes full height */
+.leaflet-container {
+    height: 100%;
+    width: 100%;
+    z-index: 1;
+}
+</style>

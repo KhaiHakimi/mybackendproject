@@ -41,7 +41,9 @@ class TelegramUpdates extends Command
                 foreach ($result as $update) {
                     $offset = $update['update_id'] + 1;
 
-                    if (isset($update['message'])) {
+                    if (isset($update['callback_query'])) {
+                        $commandService->handleCallback($update['callback_query']);
+                    } elseif (isset($update['message'])) {
                         // Pass the message to our new Command Service
                         $commandService->handle($update['message']);
                     }

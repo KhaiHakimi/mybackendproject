@@ -31,6 +31,8 @@
 
         <div class="py-12">
             <div class="mx-auto max-w-7xl sm:px-6 lg:px-8 space-y-8">
+
+
                 <div
                     v-if="weather"
                     class="grid grid-cols-1 md:grid-cols-2 gap-8 animate-fade-in-up"
@@ -288,12 +290,16 @@
 <script setup>
     import GuestLayout from '@/Layouts/GuestLayout.vue'
     import { Head, router, Link } from '@inertiajs/vue3'
+    import { ref } from 'vue'
+
 
     const props = defineProps({
         port: Object,
         weather: Object,
         risk_analysis: Object,
     })
+
+
 
     const refreshWeather = () => {
         if (confirm('Fetch real-time weather data for this location?')) {

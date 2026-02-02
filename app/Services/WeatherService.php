@@ -17,20 +17,14 @@ class WeatherService
         $lon = $port->longitude;
 
         try {
-            // USING OPEN-METEO as a reliable backend data source
-            $omResponse = Http::get('https://api.open-meteo.com/v1/forecast', [
-                'latitude' => $lat,
-                'longitude' => $lon,
-                'current' => 'wind_speed_10m,precipitation,visibility',
-                'hourly' => 'wave_height',
-                'wind_speed_unit' => 'kmh',
-            ]);
-
-            $marineResponse = Http::get('https://marine-api.open-meteo.com/v1/marine', [
-                'latitude' => $lat,
-                'longitude' => $lon,
-                'current' => 'wave_height',
-                'timezone' => 'Asia/Singapore',
+            // USING OPENWEATHERMAP API
+            $apiKey = env('VITE_OPENWEATHER_API_KEY');
+            
+            $response = Http::get("https://api.openweathermap.org/data/2.5/weather", [
+                'lat' => $lat,
+                'lon' => $lon,
+                'appid' => $apiKey,
+                'units' => 'metric'
             ]);
 
             $windSpeed = 0;
@@ -38,13 +32,30 @@ class WeatherService
             $visibility = 10;
             $waveHeight = 0;
 
-            if ($omResponse->successful()) {
-                $current = $omResponse->json('current');
-                $windSpeed = $current['wind_speed_10m'] ?? 0;
-                $precipitation = $current['precipitation'] ?? 0;
-                $visibility = ($current['visibility'] ?? 10000) / 1000;
+            if ($response->successful()) {
+                $data = $response->json();
+                
+                // Wind Speed: OWM returns m/s, convert to km/h
+                $windSpeed = ($data['wind']['speed'] ?? 0) * 3.6;
+                
+                // Visibility: OWM returns meters, convert to km
+                $visibility = ($data['visibility'] ?? 10000) / 1000;
+                
+                // Precipitation: Check rain (1h or 3h)
+                $precipitation = $data['rain']['1h'] ?? ($data['rain']['3h'] ?? 0);
             }
 
+            // Note: OpenWeatherMap Standard does not provide Wave Height.
+            // We will fetch wave data from Open-Meteo Marine (Free) to maintain Risk Model functionality,
+            // or estimate it based on wind speed if strictly necessary to avoid all other APIs.
+            // For now, keeping Open-Meteo Marine for WAVES ONLY as OWM Standard lacks this.
+             $marineResponse = Http::get('https://marine-api.open-meteo.com/v1/marine', [
+                'latitude' => $lat,
+                'longitude' => $lon,
+                'current' => 'wave_height',
+                'timezone' => 'Asia/Singapore',
+            ]);
+            
             if ($marineResponse->successful()) {
                 $waveHeight = $marineResponse->json('current')['wave_height'] ?? 0;
             }
@@ -58,8 +69,8 @@ class WeatherService
                 'recorded_at' => now(),
             ];
 
-            // AI Risk Analysis
-            $riskData = $this->analyzeRisk($weatherData);
+            // AI Risk Analysis (Delegated to Main Engine)
+            $riskData = app(\App\Services\GeoIntelligenceService::class)->calculateRisk($weatherData);
 
             $finalData = array_merge($weatherData, $riskData);
 
@@ -80,34 +91,83 @@ class WeatherService
         }
     }
 
-    private function analyzeRisk($data)
+    // analyzeRisk moved to GeoIntelligenceService
+
+    /**
+     * Fetch weather data for a specific coordinate (Ad-hoc / Mid-Sea).
+     * Does NOT save to database.
+     * Caches result for 60 minutes to improve performance.
+     */
+    public function getMarineForecast($lat, $lon)
     {
-        // Try Python Service
-        try {
-            $response = Http::timeout(2)->post('http://127.0.0.1:5000/predict-risk', $data);
-            if ($response->successful()) {
-                return [
-                    'risk_score' => $response->json('risk_score'),
-                    'risk_status' => $response->json('risk_status') ?? 'Safe',
+        // Round coordinates to increase cache hit rate
+        $lat = round($lat, 2);
+        $lon = round($lon, 2);
+        $cacheKey = "marine_forecast_{$lat}_{$lon}";
+
+        return \Illuminate\Support\Facades\Cache::remember($cacheKey, 60 * 60, function () use ($lat, $lon) {
+            try {
+                // USING OPENWEATHERMAP API
+                $apiKey = env('VITE_OPENWEATHER_API_KEY');
+                
+                $response = Http::timeout(5)->get("https://api.openweathermap.org/data/2.5/weather", [
+                    'lat' => $lat,
+                    'lon' => $lon,
+                    'appid' => $apiKey,
+                    'units' => 'metric'
+                ]);
+
+                // Keep Marine API for waves
+                $marineResponse = Http::timeout(3)->get('https://marine-api.open-meteo.com/v1/marine', [
+                    'latitude' => $lat,
+                    'longitude' => $lon,
+                    'current' => 'wave_height,wave_direction,wave_period,swell_wave_height',
+                    'timezone' => 'Asia/Singapore',
+                ]);
+
+                $windSpeed = 0;
+                $waveHeight = 0;
+                $waveDirection = 0;
+                $wavePeriod = 0;
+                $swellHeight = 0;
+                $visibility = 10;
+                $precipitation = 0;
+
+                if ($response->successful()) {
+                    $data = $response->json();
+                    $windSpeed = ($data['wind']['speed'] ?? 0) * 3.6; // m/s to km/h
+                    $visibility = ($data['visibility'] ?? 10000) / 1000; // m to km
+                    $precipitation = $data['rain']['1h'] ?? ($data['rain']['3h'] ?? 0);
+                }
+
+                if ($marineResponse->successful()) {
+                    $marineData = $marineResponse->json('current');
+                    $waveHeight = $marineData['wave_height'] ?? 0;
+                    $waveDirection = $marineData['wave_direction'] ?? 0;
+                    $wavePeriod = $marineData['wave_period'] ?? 0;
+                    $swellHeight = $marineData['swell_wave_height'] ?? 0;
+                }
+
+                $weatherData = [
+                    'wind_speed' => $windSpeed,
+                    'wave_height' => $waveHeight,
+                    'wave_direction' => $waveDirection,
+                    'wave_period' => $wavePeriod,
+                    'swell_height' => $swellHeight,
+                    'visibility' => $visibility,
+                    'precipitation' => $precipitation,
                 ];
+
+                // AI Risk Analysis (Delegated to Main Engine)
+                $riskData = app(\App\Services\GeoIntelligenceService::class)->calculateRisk($weatherData);
+
+                return array_merge($weatherData, $riskData);
+
+            } catch (\Exception $e) {
+                Log::error("Marine forecast fetch failed: ".$e->getMessage());
+                return null;
             }
-        } catch (\Exception $e) {
-            // Fallback
-        }
-
-        // Fallback Logic
-        $riskScore = 0;
-        $status = 'Safe';
-
-        if ($data['wind_speed'] > 40 || $data['wave_height'] > 2.0) {
-            $riskScore = 80;
-            $status = 'High Risk';
-        } elseif ($data['wind_speed'] > 25) {
-            $riskScore = 50;
-            $status = 'Caution';
-        }
-
-        return ['risk_score' => $riskScore, 'risk_status' => $status];
+        });
     }
 
     private function triggerAlert(Port $port, $data)

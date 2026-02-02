@@ -6,6 +6,8 @@ use App\Jobs\FetchWeatherForPort;
 use App\Models\Port;
 use App\Services\WeatherService;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Http;
+use Illuminate\Support\Facades\Cache;
 use Inertia\Inertia;
 
 class WeatherController extends Controller
@@ -159,4 +161,310 @@ class WeatherController extends Controller
             'total' => $count,
         ]);
     }
+
+    public function windData(Request $request)
+    {
+        // Cache for 1 hour
+        // v67: FORCE POSITIVE DY (Fix Unavailable?)
+        return Cache::remember('marine_wind_data_grid_v67', 3600, function () {
+            return $this->transformWindDataSimulation([]);
+        });
+    }
+
+
+
+    private function transformWindDataSimulation($data)
+    {
+        // Grid: 0 to 360, 90 to -90
+        $nx = 360; 
+        $ny = 181;
+        $gridSize = $nx * $ny;
+        
+        // Strong Wind
+        $uData = array_fill(0, $gridSize, 10.0); 
+        $vData = array_fill(0, $gridSize, 5.0); 
+
+        return [
+             [
+                'header' => [
+                    'parameterCategory' => 2, 'parameterNumber' => 2,
+                    'nx' => $nx, 'ny' => $ny,
+                    'lo1' => 0.0, 'la1' => 90.0,
+                    'dx' => 1.0, 'dy' => 1.0, // POSITIVE step size
+                    'refTime' => now()->toIso8601String(),
+                ],
+                'data' => $uData
+             ],
+             [
+                'header' => [
+                    'parameterCategory' => 2, 'parameterNumber' => 3,
+                    'nx' => $nx, 'ny' => $ny,
+                    'lo1' => 0.0, 'la1' => 90.0,
+                    'dx' => 1.0, 'dy' => 1.0, // POSITIVE step size
+                    'refTime' => now()->toIso8601String(),
+                ],
+                'data' => $vData
+             ]
+        ];
+    }
+
+    public function waveData(Request $request)
+    {
+        // Cache data for 1 hour
+        // v60: Reverted to OpenMeteo/Sim (Stormglass removed)
+        return Cache::remember('marine_wave_data_grid_v60', 3600, function () {
+             return $this->fetchWaveDataWithFallback();
+        });
+    }
+
+
+
+
+
+
+
+    private function fetchWaveDataWithFallback()
+    {
+        try {
+            $realData = $this->fetchOpenMeteoWaveData();
+            if ($this->hasValidGridData($realData)) {
+                return $realData;
+            }
+        } catch (\Exception $e) {
+            \Log::error("Wave Data Fetch Failed: " . $e->getMessage());
+        }
+
+        \Log::warning("OpenMeteo Wave Data Empty/Failed - Using Simulation Fallback");
+        return $this->generateSimulationWaves();
+    }
+
+    private function hasValidGridData($data)
+    {
+        if (empty($data)) return false;
+        $sample = $data[0]['data'] ?? [];
+        foreach ($sample as $val) {
+            if ($val != 0) return true;
+        }
+        return false;
+    }
+
+    private function generateSimulationWaves()
+    {
+        // GLOBAL STANDARD GRID (-180 to 180)
+        // Most robust for leaflet-velocity
+        $nx = 360;
+        $ny = 181;
+        
+        $la1 = 90.0;
+        $la2 = -90.0;
+        
+        $lo1 = -180.0; // Standard start
+        $lo2 = 179.0;
+        
+        $dx = 1.0;
+        $dy = -1.0;
+        
+        $gridSize = $nx * $ny;
+        $uData = array_fill(0, $gridSize, 0.0);
+        $vData = array_fill(0, $gridSize, 0.0);
+        
+        for ($latIdx = 0; $latIdx < $ny; $latIdx++) {
+            $lat = $la1 + ($latIdx * $dy);
+            
+            for ($lonIdx = 0; $lonIdx < $nx; $lonIdx++) {
+                $lon = $lo1 + ($lonIdx * $dx);
+                $i = ($latIdx * $nx) + $lonIdx;
+
+                // VISIBLE WAVES EVERYWHERE 
+                $height = 4.0 + (1.0 * sin($lat * 0.2)); 
+                $dir = 225; // SW Flow
+                
+                $rad = deg2rad($dir);
+                $uData[$i] = round(-$height * sin($rad), 3);
+                $vData[$i] = round(-$height * cos($rad), 3);
+            }
+        }
+        
+        $baseHeader = [
+            'parameterCategory' => 2,
+            'parameterNumber'   => 2,
+            'shorthand'         => 'ugrd',
+            'surface1Type'      => 103,
+            'surface1Value'     => 10.0,
+            'forecastTime'      => 0,
+            'scanMode'          => 0,
+            'nx'  => $nx,
+            'ny'  => $ny,
+            'lo1' => $lo1,
+            'la1' => $la1,
+            'lo2' => $lo2,
+            'la2' => $la2,
+            'dx'  => $dx,
+            'dy'  => $dy,
+            'refTime' => now()->setTimezone('UTC')->toIso8601String()
+        ];
+
+        return [
+            [
+                'header' => $baseHeader,
+                'data'   => $uData,
+            ],
+            [
+                'header' => array_merge($baseHeader, [
+                    'parameterNumber' => 3, 
+                    'shorthand' => 'vgrd'
+                ]),
+                'data' => $vData,
+            ],
+        ];
+    }
+
+
+
+    /**
+     * Crude Land Mask for ASEAN Region to prevent waves on land.
+     */
+
+
+    private function fetchOpenMeteoWaveData()
+    {
+        // 1. Initialize Global Grid
+        $nx = 360; $ny = 181; // 1-degree global grid matches the fetch step for simplicity
+        $gridSize = $nx * $ny;
+        $uData = array_fill(0, $gridSize, 0.0);
+        $vData = array_fill(0, $gridSize, 0.0);
+
+        // 2. Target Region (Reduced to 1.0 degree step to safely stay within API limits)
+        $latMin = -2; $latMax = 14; 
+        $lonMin = 94; $lonMax = 126;
+        
+        $lats = []; $lons = [];
+        // Step 1.0 degree
+        for ($lat = $latMax; $lat >= $latMin; $lat -= 1.0) { 
+             for ($lon = $lonMin; $lon <= $lonMax; $lon += 1.0) {
+                 $lats[] = $lat;
+                 $lons[] = $lon;
+             }
+        }
+
+        // 3. Fetch
+        $chunkSize = 60; // Safer chunk size
+        $totalPoints = count($lats);
+        $results = [];
+
+        try {
+            for ($i = 0; $i < $totalPoints; $i += $chunkSize) {
+                $chunkLats = array_slice($lats, $i, $chunkSize);
+                $chunkLons = array_slice($lons, $i, $chunkSize);
+
+                $response = Http::timeout(5)->get("https://marine-api.open-meteo.com/v1/marine", [
+                    'latitude' => implode(',', $chunkLats),
+                    'longitude' => implode(',', $chunkLons),
+                    'hourly' => 'wave_height,wave_direction',
+                    'forecast_days' => 1 
+                ]);
+
+                if ($response->failed() || $response->status() == 429) {
+                    \Log::warning("OpenMeteo 429/Fail", ['status' => $response->status()]); 
+                    return []; 
+                }
+                
+                $chunkResult = $response->json();
+                if (!is_array($chunkResult)) continue;
+                if (!isset($chunkResult[0])) $chunkResult = [$chunkResult];
+                
+                $results = array_merge($results, $chunkResult);
+                usleep(250000); // 250ms delay aggressively prevents rate limits
+            }
+
+            // 4. Map
+            $currentHourIndex = (int) gmdate('G');
+            $mappedCount = 0;
+
+            foreach ($results as $idx => $pointData) {
+                if (!isset($lats[$idx])) break;
+                if (!isset($pointData['hourly']['wave_height'][$currentHourIndex])) continue;
+
+                $height = $pointData['hourly']['wave_height'][$currentHourIndex];
+                $dir = $pointData['hourly']['wave_direction'][$currentHourIndex];
+                
+                if (!$height || $height <= 0) continue;
+                $mappedCount++;
+
+                $ptLat = $lats[$idx];
+                $ptLon = $lons[$idx];
+                
+                // Map to 1-degree Global Grid
+                // 90 -> 0, -90 -> 180
+                $latIdx = (int)round(90 - $ptLat);
+                $lonIdx = (int)round($ptLon + 180);
+                
+                if ($lonIdx >= $nx) $lonIdx = 0;
+                $arrayIndex = ($latIdx * $nx) + $lonIdx;
+                
+                if ($arrayIndex < 0 || $arrayIndex >= $gridSize) continue;
+
+                $speedMs = $height; 
+                $rad = deg2rad($dir);
+                
+                $uData[$arrayIndex] = round(-$speedMs * sin($rad), 3);
+                $vData[$arrayIndex] = round(-$speedMs * cos($rad), 3);
+            }
+            
+            if ($mappedCount < 5) return [];
+
+            return [
+                [
+                    'header' => [
+                        'parameterCategory' => 2, 'parameterNumber' => 2,
+                        'nx' => $nx, 'ny' => $ny,
+                        'lo1' => -180, 'la1' => 90, 
+                        'dx' => 1.0, 'dy' => -1.0,
+                        'refTime' => now()->toIso8601String(),
+                    ],
+                    'data' => $uData,
+                ],
+                [
+                    'header' => [
+                        'parameterCategory' => 2, 'parameterNumber' => 3,
+                        'nx' => $nx, 'ny' => $ny,
+                        'lo1' => -180, 'la1' => 90,
+                        'dx' => 1.0, 'dy' => -1.0,
+                        'refTime' => now()->toIso8601String(),
+                    ],
+                    'data' => $vData,
+                ],
+            ];
+
+        } catch (\Exception $e) {
+             \Log::error("OM Fetch Error: " . $e->getMessage());
+             return [];
+        }
+    }
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 }

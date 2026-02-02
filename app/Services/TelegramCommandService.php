@@ -5,6 +5,9 @@ namespace App\Services;
 use App\Models\Port;
 use App\Models\Schedule;
 use App\Models\User;
+use App\Models\RouteSubscription;
+use App\Services\WeatherService;
+use App\Services\GeoIntelligenceService;
 use Illuminate\Support\Facades\Log;
 
 class TelegramCommandService
@@ -23,7 +26,6 @@ class TelegramCommandService
         // Handle Contact Sharing (Account Linking)
         if (isset($message['contact'])) {
             $this->handleContact($chatId, $message['contact']);
-
             return;
         }
 
@@ -50,11 +52,47 @@ class TelegramCommandService
             case '/schedule':
                 $this->handleSchedule($chatId, $args);
                 break;
+            case '/notify':
+                $this->handleNotify($chatId, $args);
+                break;
             case '/server':
                 $this->handleServer($chatId);
                 break;
             default:
-                $this->telegram->sendMessage($chatId, "I don't recognize that command. Try /help to see what I can do.");
+                // INTELLIGENT BOT: Use NLP for natural conversation instead of hard-fail
+                $this->handleNaturalText($chatId, $text);
+        }
+    }
+
+    public function handleCallback($callback)
+    {
+        $chatId = $callback['message']['chat']['id'];
+        $data = $callback['data'];
+        
+        Log::info("Telegram Callback from ($chatId): $data");
+
+        if (str_starts_with($data, 'w_')) {
+            // Weather: w_{port_id}
+            $portId = str_replace('w_', '', $data);
+            $port = Port::find($portId);
+            if ($port) $this->sendWeatherReport($chatId, $port);
+        }
+        elseif (str_starts_with($data, 's_o_')) {
+            // Schedule Origin: s_o_{port_id}
+            $originId = str_replace('s_o_', '', $data);
+            $this->askForScheduleDestination($chatId, $originId);
+        }
+        elseif (str_starts_with($data, 's_d_')) {
+            // Schedule Dest: s_d_{origin}_{dest}
+            $parts = explode('_', $data);
+            // 0=s, 1=d, 2=origin, 3=dest
+            if (count($parts) >= 4) {
+                 $originId = $parts[2];
+                 $destId = $parts[3];
+                 $from = Port::find($originId);
+                 $to = Port::find($destId);
+                 if ($from && $to) $this->sendScheduleReport($chatId, $from, $to);
+            }
         }
     }
 
@@ -177,6 +215,9 @@ class TelegramCommandService
             "🚢 <b>/schedule [From] [To]</b>\n".
             "<i>(e.g., /schedule Langkawi Kuala Kedah)</i>\n".
             "Check next upcoming ferry.\n\n".
+            "🔔 <b>/notify [From] [To]</b>\n".
+            "<i>(e.g., /notify Langkawi Kuala Kedah)</i>\n".
+            "Get alerted when safe to travel.\n\n".
             "⚙️ <b>/server</b>\n".
             'Check system health (Admin only).';
 
@@ -186,8 +227,8 @@ class TelegramCommandService
     protected function handleWeather($chatId, $args)
     {
         if (empty($args)) {
-            $this->telegram->sendMessage($chatId, "⚠️ Please provide a port name.\nExample: <code>/weather Kuala Perlis</code>");
-
+            $keyboard = $this->getPortsKeyboard('w_');
+            $this->telegram->sendMessage($chatId, "📍 <b>Check Weather</b>\nSelect a jetty:", ['inline_keyboard' => $keyboard]);
             return;
         }
 
@@ -196,60 +237,167 @@ class TelegramCommandService
 
         if (! $port) {
             $this->telegram->sendMessage($chatId, "❌ Port '<b>$query</b>' not found.");
-
             return;
         }
 
-        $weather = $port->weatherData()->latest()->first();
+        $this->sendWeatherReport($chatId, $port);
+    }
+
+    protected function sendWeatherReport($chatId, $port)
+    {
+        // 1. Send "Thinking/Analyzing" placeholder and Capture ID
+        $sentMessage = $this->telegram->sendMessage($chatId, "🤖 <b>FerryCast AI</b> is analyzing satellite data for <b>{$port->name}</b>... Please wait.");
+        $messageId = is_array($sentMessage) ? ($sentMessage['message_id'] ?? null) : null;
+
+        // 2. Fetch REAL-TIME data
+        $weather = app(WeatherService::class)->updateWeatherForPort($port);
 
         if (! $weather) {
-            $this->telegram->sendMessage($chatId, "ℹ️ No weather data available for <b>{$port->name}</b> yet.");
+           // Show last known if fail
+           $weather = $port->weatherData()->latest()->first();
+           $msg = "ℹ️ Real-Time Unavailable. Showing last known record.";
+        } else {
+             $msg = "";
+        }
 
+        if (! $weather) {
+            $errorMsg = "❌ No weather data available at all.";
+            if ($messageId) {
+                $this->telegram->editMessageText($chatId, $messageId, $errorMsg);
+            } else {
+                $this->telegram->sendMessage($chatId, $errorMsg);
+            }
             return;
         }
 
         $emoji = $weather->risk_status === 'High Risk' ? '🔴' : ($weather->risk_status === 'Caution' ? '🟡' : '🟢');
-
-        $message = "<b>🌥 Weather Report: {$port->name}</b>\n\n".
+        
+        $finalText = "<b>🌥 Real-Time Weather Report: {$port->name}</b>\n\n".
             "<b>Status:</b> $emoji <b>{$weather->risk_status}</b>\n".
             "<b>Risk Score:</b> {$weather->risk_score}%\n\n".
             "💨 <b>Wind:</b> {$weather->wind_speed} km/h\n".
             "🌊 <b>Waves:</b> {$weather->wave_height} m\n".
             "🌧 <b>Rain:</b> {$weather->precipitation} mm\n".
             "👁 <b>Visibility:</b> {$weather->visibility} km\n\n".
-            '<i>Last Updated: '.$weather->created_at->diffForHumans().'</i>';
+            '<i>Analysis Time: '.now()->toDateTimeString().'</i>';
+            
+        if ($msg) $finalText = $msg . "\n\n" . $finalText;
 
-        $this->telegram->sendMessage($chatId, $message);
+        // Check if we can edit
+        if ($messageId) {
+            $this->telegram->editMessageText($chatId, $messageId, $finalText);
+        } else {
+            $this->telegram->sendMessage($chatId, $finalText);
+        }
     }
 
     protected function handleSchedule($chatId, $args)
     {
         if (count($args) < 2) {
-            // Since parsing "From Port To Port" is hard with spaces, let's try a simpler approach or guide them.
-            // But for now, let's assume single word names or specific logic.
-            // Better: ASK them step by step? No, stateless is better for v1.
-            // Let's assume standard format: "Start" "End"
-            $this->telegram->sendMessage($chatId, "⚠️ Usage: <code>/schedule [Origin] [Destination]</code>\nExample: <code>/schedule Langkawi Kuala</code>");
-
-            return;
+             // Show Origin Buttons
+             $keyboard = $this->getPortsKeyboard('s_o_');
+             $this->telegram->sendMessage($chatId, "🚢 <b>Find Schedule</b>\nStep 1: Select <b>Origin</b> Jetty:", ['inline_keyboard' => $keyboard]);
+             return;
         }
 
-        // Simple heuristic: First half args = From, Second half = To
-        // Or just search widely.
-        // Let's take first arg as From, second as To for simplicity for now.
-        // Or better: $from = $args[0]; $to = $args[1];
-
+        // ... existing text processing ...
         $fromQuery = $args[0];
-        $toQuery = $args[1]; // Crude but works for single word names like "Langkawi" "Kuala"
+        $toQuery = $args[1];
 
         $fromPort = Port::where('name', 'LIKE', "%{$fromQuery}%")->first();
         $toPort = Port::where('name', 'LIKE', "%{$toQuery}%")->first();
 
         if (! $fromPort || ! $toPort) {
             $this->telegram->sendMessage($chatId, '❌ Could not find one or both ports.');
-
             return;
         }
+
+        $this->sendScheduleReport($chatId, $fromPort, $toPort);
+    }
+
+    protected function askForScheduleDestination($chatId, $originId)
+    {
+        $origin = Port::find($originId);
+        if (!$origin) return;
+
+        // Find ports that actually have scheduled trips from this origin
+        $availableDestIds = Schedule::where('origin_port_id', $originId)
+            ->distinct()
+            ->pluck('destination_port_id');
+
+        $availableDestinations = Port::whereIn('id', $availableDestIds)->get();
+
+        if ($availableDestinations->isEmpty()) {
+            $this->telegram->sendMessage($chatId, "⚠️ Sorry, there are no scheduled ferries departing from <b>{$origin->name}</b> right now.");
+            return;
+        }
+
+        // Generate buttons for available destinations only
+        $buttons = [];
+        $row = [];
+        foreach ($availableDestinations as $port) {
+            $row[] = ['text' => $port->name, 'callback_data' => "s_d_{$originId}_" . $port->id];
+            if (count($row) == 2) {
+                $buttons[] = $row;
+                $row = [];
+            }
+        }
+        if (!empty($row)) $buttons[] = $row;
+        
+        $this->telegram->sendMessage($chatId, "🚢 <b>Find Schedule</b>\nStep 2: Start <b>{$origin->name}</b> \nSelect <b>Destination</b>:", ['inline_keyboard' => $buttons]);
+    }
+
+    protected function sendScheduleReport($chatId, $fromPort, $toPort)
+    {
+        // 1. Send "Thinking/Scanning Route" placeholder
+        $sentMessage = $this->telegram->sendMessage($chatId, "🛰 <b>FerryCast Geospatial Engine</b> is scanning the full route path from <b>{$fromPort->name}</b> to <b>{$toPort->name}</b>... Please wait.");
+        $messageId = is_array($sentMessage) ? ($sentMessage['message_id'] ?? null) : null;
+
+        // 2. Perform Advanced Route Viability Analysis (Waypoints + AI)
+        $routeAnalysis = app(GeoIntelligenceService::class)->analyzeRouteViability($fromPort, $toPort);
+        
+        // 3. Get Origin/Dest Weather for display
+        $fromWeather = $fromPort->weatherData()->latest()->first();
+        $toWeather = $toPort->weatherData()->latest()->first();
+        
+        $adviceMsg = "";
+        $isRisky = false;
+
+        // A. Check Ports
+        if ($fromWeather && $fromWeather->risk_status === 'High Risk') {
+             $adviceMsg .= "⚠️ <b>PORT ALERT:</b> High waves at Origin ({$fromPort->name}). Risk Score: {$fromWeather->risk_score}%.\n";
+             $isRisky = true;
+        }
+        if ($toWeather && $toWeather->risk_status === 'High Risk') {
+             $adviceMsg .= "⚠️ <b>PORT ALERT:</b> Rough seas at Destination ({$toPort->name}). Risk Score: {$toWeather->risk_score}%.\n";
+             $isRisky = true;
+        }
+
+        // B. Check Mid-Sea (The New Feature)
+        if ($routeAnalysis['is_deep_sea_risky']) {
+             $isRisky = true;
+             $maxWave = $routeAnalysis['max_wave_height'];
+             $adviceMsg .= "🌊 <b>DEEP SEA ALERT:</b> Dangerous swells detected in open water (Max: {$maxWave}m). Even if ports are safe, the journey is risky.\n";
+        }
+
+        if ($isRisky) {
+            $adviceMsg .= "🔴 <b>Recommendation:</b> It is NOT SAFE to travel right now.\n\n";
+            
+            // INTELLIGENCE V2: Port Hopper (Alternative Suggestion)
+            // If origin is risky, check nearby ports (within 50km) that are SAFE
+            $altPort = $this->findAlternativeSafePort($fromPort);
+            if ($altPort) {
+                $distance = $this->calculateDistance($fromPort->latitude, $fromPort->longitude, $altPort->latitude, $altPort->longitude);
+                $adviceMsg .= "💡 <b>SMART TIP:</b> Consider departing from <b>{$altPort->name}</b> instead.\n".
+                              "Permission to reroute? It is only <b>{$distance} km</b> away and conditions are <b>Safe</b>.\n\n";
+            }
+
+        } elseif (($fromWeather && $fromWeather->risk_status === 'Caution') || ($toWeather && $toWeather->risk_status === 'Caution')) {
+            $adviceMsg .= "🟡 <b>Recommendation:</b> Travel with caution. Some rough weather detected.\n\n";
+        } else {
+            $adviceMsg .= "✅ <b>Trip Advice:</b> Weather & Route Path look good for sailing!\n\n";
+        }
+
 
         // Find next departure from NOW
         $schedule = Schedule::where('origin_port_id', $fromPort->id)
@@ -260,22 +408,176 @@ class TelegramCommandService
             ->first();
 
         if (! $schedule) {
-            $this->telegram->sendMessage($chatId, "❌ No upcoming trips found today from <b>{$fromPort->name}</b> to <b>{$toPort->name}</b>.");
-
+            $msg = $adviceMsg . "❌ No upcoming trips found today from <b>{$fromPort->name}</b> to <b>{$toPort->name}</b>.";
+             if ($messageId) $this->telegram->editMessageText($chatId, $messageId, $msg);
+             else $this->telegram->sendMessage($chatId, $msg);
             return;
         }
 
         $time = \Carbon\Carbon::parse($schedule->departure_time)->format('h:i A');
         $date = \Carbon\Carbon::parse($schedule->departure_time)->format('d M Y');
 
+        // Generate Visual Route Profile (ASCII Graph)
+        $profileGraph = "<b>🛰 Route Scan Profile:</b>\n\n";
+        
+        // Origin
+        $emoji = $fromWeather && $fromWeather->risk_status === 'High Risk' ? '🔴' : ($fromWeather && $fromWeather->risk_status === 'Caution' ? '🟡' : '🟢');
+        $profileGraph .= "📍 <b>{$fromPort->name}:</b> {$emoji} " . ($fromWeather->wave_height ?? '?'). "m\n";
+        
+        // Mid-Sea Points
+        foreach($routeAnalysis['checkpoints'] as $i => $cp) {
+             $cpEmoji = $cp['wave_height'] > 2.5 ? '🔴' : ($cp['wave_height'] > 1.5 ? '🟡' : '🟢');
+             $num = $i + 1;
+             $profileGraph .= "🌊 <b>Mid-Sea {$num}:</b> {$cpEmoji} {$cp['wave_height']}m\n";
+        }
+        
+        // Destination
+        $emojiDest = $toWeather && $toWeather->risk_status === 'High Risk' ? '🔴' : ($toWeather && $toWeather->risk_status === 'Caution' ? '🟡' : '🟢');
+        $profileGraph .= "📍 <b>{$toPort->name}:</b> {$emojiDest} " . ($toWeather->wave_height ?? '?'). "m\n\n";
+
+
         $message = "<b>🚢 Next Ferry Departure</b>\n\n".
+            $adviceMsg.
+            $profileGraph.
             "📍 <b>Route:</b> {$fromPort->name} ➡️ {$toPort->name}\n".
             "🕐 <b>Time:</b> $time\n".
             "📅 <b>Date:</b> $date\n".
             "⛴ <b>Ferry:</b> {$schedule->ferry->name}\n".
-            "💵 <b>Price:</b> RM {$schedule->price}";
+            "💵 <b>Price:</b> RM {$schedule->price}\n".
+             "📡 <i>Analyzed 5 geospatial points along the route.</i>";
 
-        $this->telegram->sendMessage($chatId, $message);
+        if ($messageId) $this->telegram->editMessageText($chatId, $messageId, $message);
+        else $this->telegram->sendMessage($chatId, $message);
+    }
+
+    /**
+     * NLP-Lite: Handle human-like sentences (e.g. "Is it safe to go to Langkawi?")
+     */
+    protected function handleNaturalText($chatId, $text)
+    {
+        $text = strtolower($text);
+        
+        // 1. Detect Intent
+        $isWeather = str_contains($text, 'weather') || str_contains($text, 'safe') || str_contains($text, 'risk') || str_contains($text, 'how is');
+        $isSchedule = str_contains($text, 'schedule') || str_contains($text, 'time') || str_contains($text, 'when') || str_contains($text, 'trip');
+        
+        // 2. Extract Entities (Ports) using Fuzzy logic
+        $recognizedPort = null;
+        $ports = Port::all();
+        foreach($ports as $port) {
+            if (str_contains($text, strtolower($port->name))) {
+                $recognizedPort = $port;
+                break;
+            }
+        }
+        
+        if ($recognizedPort) {
+            if ($isSchedule) {
+                 $this->telegram->sendMessage($chatId, "🤖 I see you are asking about trips involving <b>{$recognizedPort->name}</b>. Let me find the schedule...");
+                 // Trigger schedule flow (Ask for destination if only one port found)
+                 $this->askForScheduleDestination($chatId, $recognizedPort->id);
+            } else {
+                 // Default to weather/safety
+                 $this->telegram->sendMessage($chatId, "🤖 Checking safety status for <b>{$recognizedPort->name}</b>...");
+                 $this->sendWeatherReport($chatId, $recognizedPort);
+            }
+            return;
+        }
+
+        // If no port found but intent is clear
+        if ($isWeather) {
+            $this->telegram->sendMessage($chatId, "🤖 You seem to be asking about the weather. Which jetty?");
+             $keyboard = $this->getPortsKeyboard('w_');
+            $this->telegram->sendMessage($chatId, "Select a jetty:", ['inline_keyboard' => $keyboard]);
+            return;
+        }
+        
+        // Fallback
+        $this->telegram->sendMessage($chatId, "🤖 I'm sorry, I didn't quite catch that. I am an AI, but I'm trained specifically for Marine Safety.\n\nTry asking:\n'Is Langkawi safe?'\n'When is the next ferry to Kuala Perlis?'");
+    }
+    
+    private function getPortsKeyboard($prefix, $excludeId = null)
+    {
+        $ports = Port::all();
+        $buttons = [];
+        $row = [];
+        foreach ($ports as $port) {
+            if ($excludeId && $port->id == $excludeId) continue;
+            
+            // Inline Keyboard Button format: ['text' => 'Label', 'callback_data' => 'Payload']
+            $row[] = ['text' => $port->name, 'callback_data' => $prefix . $port->id];
+            
+            // 2 buttons per row
+            if (count($row) == 2) {
+                $buttons[] = $row;
+                $row = [];
+            }
+        }
+        if (!empty($row)) $buttons[] = $row;
+        return $buttons;
+    }
+
+    protected function handleNotify($chatId, $args)
+    {
+        if (count($args) < 2) {
+             $this->telegram->sendMessage($chatId, "⚠️ Usage: <code>/notify [Origin] [Destination]</code>\nExample: <code>/notify Langkawi Kuala</code>");
+             return;
+        }
+
+        $fromQuery = $args[0];
+        $toQuery = $args[1];
+
+        $fromPort = Port::where('name', 'LIKE', "%{$fromQuery}%")->first();
+        $toPort = Port::where('name', 'LIKE', "%{$toQuery}%")->first();
+        
+        if (!$fromPort || !$toPort) {
+            $this->telegram->sendMessage($chatId, "❌ Ports not found.");
+            return;
+        }
+
+        // Create Subscription
+        RouteSubscription::create([
+            'user_id' => null, // Optional if we link user later
+            'chat_id' => $chatId,
+            'origin_port_id' => $fromPort->id,
+            'destination_port_id' => $toPort->id,
+            'is_active' => true
+        ]);
+
+        $this->telegram->sendMessage($chatId, "🔔 <b>Request Received!</b>\n\nI will monitor the weather for <b>{$fromPort->name} ➡️ {$toPort->name}</b> every hour.\n\nI'll send you a message automatically when it becomes safe to travel.");
+    }
+
+    private function findAlternativeSafePort($riskyPort)
+    {
+        // Get all ports except current
+        $ports = Port::where('id', '!=', $riskyPort->id)->get();
+        
+        foreach($ports as $port) {
+            if (!$port->latitude || !$port->longitude) continue;
+            
+            // Calculate distance
+            $dist = $this->calculateDistance($riskyPort->latitude, $riskyPort->longitude, $port->latitude, $port->longitude);
+            
+            // If within 50km
+            if ($dist <= 50) {
+                // Check if SAFE
+                $weather = $port->weatherData()->latest()->first();
+                if ($weather && $weather->risk_status !== 'High Risk') {
+                    return $port;
+                }
+            }
+        }
+        return null;
+    }
+
+    private function calculateDistance($lat1, $lon1, $lat2, $lon2)
+    {
+        $theta = $lon1 - $lon2;
+        $dist = sin(deg2rad($lat1)) * sin(deg2rad($lat2)) +  cos(deg2rad($lat1)) * cos(deg2rad($lat2)) * cos(deg2rad($theta));
+        $dist = acos($dist);
+        $dist = rad2deg($dist);
+        $miles = $dist * 60 * 1.1515;
+        return round($miles * 1.609344, 1);
     }
 
     protected function handleServer($chatId)

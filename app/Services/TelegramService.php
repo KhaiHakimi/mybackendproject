@@ -39,7 +39,7 @@ class TelegramService
             $response = Http::post($this->baseUrl.'sendMessage', $payload);
 
             if ($response->successful()) {
-                return true;
+                return $response->json()['result'] ?? true;
             } else {
                 Log::error('Telegram Send Error: '.$response->body());
 
@@ -48,6 +48,28 @@ class TelegramService
         } catch (\Exception $e) {
             Log::error('Telegram Exception: '.$e->getMessage());
 
+            return false;
+        }
+    }
+
+    public function editMessageText($chatId, $messageId, $text, $replyMarkup = null)
+    {
+        try {
+            $payload = [
+                'chat_id' => $chatId,
+                'message_id' => $messageId,
+                'text' => $text,
+                'parse_mode' => 'HTML',
+            ];
+
+            if ($replyMarkup) {
+                $payload['reply_markup'] = json_encode($replyMarkup);
+            }
+
+            Http::post($this->baseUrl.'editMessageText', $payload);
+            return true;
+        } catch (\Exception $e) {
+            Log::error('Telegram Edit Exception: '.$e->getMessage());
             return false;
         }
     }

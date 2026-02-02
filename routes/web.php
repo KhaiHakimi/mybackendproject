@@ -17,6 +17,8 @@ Route::get('/', function () {
 
 Route::get('/dashboard', [\App\Http\Controllers\DashboardController::class, 'index'])->middleware(['auth', 'verified'])->name('dashboard');
 Route::get('/dashboard/logs', [\App\Http\Controllers\DashboardController::class, 'systemLogs'])->middleware(['auth', 'verified', 'admin'])->name('dashboard.logs');
+Route::post('/dashboard/geo-analysis', [\App\Http\Controllers\DashboardController::class, 'geoAnalysis'])->middleware(['auth', 'verified'])->name('dashboard.geo_analysis');
+Route::post('/dashboard/analyze-route', [\App\Http\Controllers\DashboardController::class, 'analyzeRoute'])->middleware(['auth', 'verified'])->name('dashboard.analyze_route');
 
 Route::middleware('auth')->group(function () {
     Route::get('/profile', [ProfileController::class, 'edit'])->name('profile.edit');
@@ -38,6 +40,8 @@ Route::get('/ports/{port}/weather', [\App\Http\Controllers\WeatherController::cl
 // Route::post('/ports/{port}/weather', [\App\Http\Controllers\WeatherController::class, 'store'])->name('weather.store');
 Route::post('/ports/{port}/weather/refresh', [\App\Http\Controllers\WeatherController::class, 'refresh'])->name('weather.refresh');
 Route::post('/weather/refresh-all', [\App\Http\Controllers\WeatherController::class, 'refreshAll'])->name('weather.refresh_all');
+Route::get('/weather/wind-data', [\App\Http\Controllers\WeatherController::class, 'windData'])->name('weather.wind_data');
+Route::get('/weather/wave-data', [\App\Http\Controllers\WeatherController::class, 'waveData'])->name('weather.wave_data');
 
 Route::middleware(['auth', 'verified'])->group(function () {
     // Authenticated actions

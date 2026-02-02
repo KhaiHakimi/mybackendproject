@@ -22,4 +22,9 @@ class Port extends Model
     {
         return $this->hasMany(WeatherData::class);
     }
+    
+    public function latestWeather()
+    {
+        return $this->hasOne(WeatherData::class)->latestOfMany();
+    }
 }

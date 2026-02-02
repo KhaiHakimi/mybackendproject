@@ -27,7 +27,7 @@ class DashboardController extends Controller
         }
 
         return Inertia::render('Dashboard', [
-            'ports' => \App\Models\Port::whereHas('departures')->orWhereHas('arrivals')->get(['id', 'name', 'latitude', 'longitude', 'location']),
+            'ports' => \App\Models\Port::whereHas('departures')->orWhereHas('arrivals')->with('latestWeather')->get(),
             'adminStats' => $adminStats,
             'systemLogs' => [], // Empty by default
             'telegramCode' => $user ? $user->telegram_verification_code : null,
@@ -87,5 +87,32 @@ class DashboardController extends Controller
         }
 
         return response()->json($systemLogs);
+    }
+
+    public function geoAnalysis(\Illuminate\Http\Request $request, \App\Services\GeoIntelligenceService $geoService)
+    {
+        $request->validate([
+            'lat' => 'required|numeric',
+            'lng' => 'required|numeric',
+        ]);
+
+        $analysis = $geoService->analyzeLocation($request->lat, $request->lng);
+
+        return response()->json($analysis);
+    }
+
+    public function analyzeRoute(\Illuminate\Http\Request $request, \App\Services\GeoIntelligenceService $geoService)
+    {
+        $request->validate([
+            'origin_id' => 'required|exists:ports,id',
+            'destination_id' => 'required|exists:ports,id',
+        ]);
+
+        $origin = \App\Models\Port::find($request->origin_id);
+        $dest = \App\Models\Port::find($request->destination_id);
+
+        $analysis = $geoService->analyzeRouteViability($origin, $dest);
+
+        return response()->json($analysis);
     }
 }

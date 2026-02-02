@@ -1,18 +1,23 @@
 <script setup>
     import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout.vue'
-    import Map from '@/Components/Map.vue'
+    import Map from '@/Components/Map.vue'; // REVERTED TO LEAFLET
     import { Head, router } from '@inertiajs/vue3'
     import { ref, onMounted, computed, watch } from 'vue'
 
     const props = defineProps({
-        ports: Array,
-        adminStats: Object, // Optional prop for admin statistics
-        adminStats: Object, // Optional prop for admin statistics
-        initialSystemLogs: Array, // Renamed to avoid confusion, though passing empty array is fine
+        ports: {
+            type: Array,
+            default: () => []
+        },
+        adminStats: {
+            type: Object,
+            default: null
+        },
+        initialSystemLogs: Array,
     })
 
     const systemLogs = ref(props.initialSystemLogs || [])
-    const allPorts = ref([...props.ports])
+    const allPorts = ref([...(props.ports || [])])
 
     watch(
         () => props.ports,
@@ -22,9 +27,19 @@
         },
     )
 
+    // State
     const userLocation = ref(null)
-    const selectedOrigin = ref(null) // If set, this overrides userLocation for distance calcs
+    const selectedOrigin = ref(null)
     const selectedPort = ref(null)
+    const selectedOverlay = ref('wind_new') // Default layer
+    
+    // Results
+    const geoAnalysisResult = ref(null)
+    const routeAnalysisResult = ref({}) 
+    
+    // Search State
+    const searchQuery = ref('')
+    const isSearching = ref(false)
 
     const currentOrigin = computed(() => {
         if (selectedOrigin.value) return selectedOrigin.value
@@ -49,7 +64,7 @@
         // Fetch System Logs asynchronously for Admins
         if (props.adminStats) {
             window.axios
-                .get(route('dashboard.logs'))
+                .get(window.route('dashboard.logs'))
                 .then((res) => {
                     systemLogs.value = res.data
                 })
@@ -68,7 +83,7 @@
         ) {
             console.log('Fetching fresh weather data...')
             window.axios
-                .post(route('weather.refresh_all'))
+                .post(window.route('weather.refresh_all'))
                 .then((res) => {
                     console.log('Auto-fetch complete:', res.data.message)
                     localStorage.setItem('last_weather_refresh', now.toString())
@@ -92,6 +107,8 @@
                 lat: userLocation.value.lat,
                 lng: userLocation.value.lng,
                 title: 'Your Location',
+                popup: '<div class="font-bold text-blue-800">Your Location</div>',
+                color: '#2563eb', // Blue
                 icon: 'http://maps.google.com/mapfiles/ms/icons/blue-dot.png',
             })
         }
@@ -120,6 +137,8 @@
                     lat: port.latitude,
                     lng: port.longitude,
                     title: port.name,
+                    popup: `<div class="font-bold text-lg">${port.name}</div><div class="text-sm">${port.location || 'Ferry Terminal'}</div>${currentOrigin.value && port.distance ? '<div class="text-xs mt-1 text-blue-600 font-bold">' + port.distance.toFixed(1) + ' km away</div>' : ''}`,
+                    color: isSelectedOrigin ? '#9333ea' : (isNearest ? '#16a34a' : (isTop3 ? '#ea580c' : '#ef4444')), // Purple, Green, Orange, Red
                     description: `${port.location || 'Ferry Terminal'} ${currentOrigin.value ? '<br/>' + (port.distance ? port.distance.toFixed(1) : '') + ' km away' : ''}`,
                     icon: isSelectedOrigin
                         ? 'http://maps.google.com/mapfiles/ms/icons/purple-dot.png'
@@ -172,37 +191,129 @@
         ]
     })
 
+    const scanAllRoutes = () => {
+        const origin = currentOrigin.value
+        if (!origin) return
+
+        let originId = origin.id
+        // Fallback if origin is GPS location
+        if (!originId && peninsularPorts.value.length > 0) {
+            originId = peninsularPorts.value[0].id
+        }
+        if (!originId) return
+
+        // Scan the displayed top 3 ports
+        displayPorts.value.forEach(port => {
+            // Skip if already scanned to avoid spamming API
+            if (routeAnalysisResult.value[port.id]) return
+
+            window.axios.post(window.route('dashboard.analyze_route'), {
+                origin_id: originId,
+                destination_id: port.id
+            }).then(res => {
+                routeAnalysisResult.value[port.id] = res.data
+            }).catch(err => console.error("Auto-scan failed for " + port.name))
+        })
+    }
+
+
+
     // ==========================================
-    // 3. GET USER GEOLOCATION
+    // 3. SEARCH LOCATION (OpenStreetMap Nominatim)
     // ==========================================
-    // Uses the browser's built-in GPS/Location API
-    const getUserLocation = () => {
-        if (navigator.geolocation) {
-            navigator.geolocation.getCurrentPosition(
-                (position) => {
-                    // Success: Update state
-                    userLocation.value = {
-                        lat: position.coords.latitude,
-                        lng: position.coords.longitude,
+    const searchLocation = async () => {
+        if (!searchQuery.value) return
+        
+        isSearching.value = true
+        try {
+            // Using OpenStreetMap's Nominatim API (Free, requires User-Agent)
+            const response = await fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(searchQuery.value)}&limit=1`, {
+                headers: {
+                    'Accept-Language': 'en'
+                }
+            })
+            
+            const data = await response.json()
+            
+            if (data && data.length > 0) {
+                const result = data[0]
+                const lat = parseFloat(result.lat)
+                const lng = parseFloat(result.lon)
+                
+                // Update User Location
+                userLocation.value = {
+                    lat: lat,
+                    lng: lng,
+                    name: result.display_name
+                }
+                
+                // Save to storage
+                localStorage.setItem('user_location', JSON.stringify(userLocation.value))
+                
+                // Recalculate
+                calculateDistances()
+                
+                // Trigger backend analysis
+                 window.axios.post(window.route('dashboard.geo_analysis'), {
+                    lat: lat,
+                    lng: lng
+                }).then(res => {
+                    geoAnalysisResult.value = res.data
+                    if (res.data.recommendation?.port_id) {
+                        const recPort = allPorts.value.find(p => p.id === res.data.recommendation.port_id)
+                        if (recPort) selectPort(recPort)
                     }
-
-                    // Save to local storage so it persists if page refreshes
-                    localStorage.setItem(
-                        'user_location',
-                        JSON.stringify(userLocation.value),
-                    )
-
-                    // Recalculate distances to all ports
-                    calculateDistances()
-                },
-                (error) => {
-                    alert('Error getting location: ' + error.message)
-                },
-            )
-        } else {
-            alert('Geolocation is not supported by this browser.')
+                })
+                
+            } else {
+                alert("Location not found. Please try a different name (e.g. 'Melaka City')")
+            }
+        } catch (e) {
+            console.error("Search failed", e)
+            alert("Could not connect to OpenStreetMap search service.")
+        } finally {
+            isSearching.value = false
         }
     }
+
+    const getCurrentUserLocation = () => {
+        if (!navigator.geolocation) {
+            alert('Geolocation is not supported by your browser.');
+            return;
+        }
+
+        isSearching.value = true;
+        navigator.geolocation.getCurrentPosition(
+            async (position) => {
+                const lat = position.coords.latitude;
+                const lng = position.coords.longitude;
+
+                // Reverse geocode to get a name for the location
+                try {
+                    const response = await fetch(`https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${lng}`);
+                    const data = await response.json();
+                    searchQuery.value = data.display_name || 'Current Location';
+                } catch (e) {
+                    console.error("Reverse geocoding failed", e);
+                    searchQuery.value = 'Current Location';
+                }
+
+                // Now use the existing search function
+                await searchLocation();
+                isSearching.value = false;
+            },
+            (error) => {
+                if (error.code === error.PERMISSION_DENIED) {
+                    alert('You have denied access to your location. Please enable it in your browser settings to use this feature.');
+                } else {
+                    alert('Unable to retrieve your location. Please try searching manually.');
+                }
+                console.error('Geolocation error:', error);
+                isSearching.value = false;
+            }
+        );
+    }
+
 
     // ==========================================
     // 4. DISTANCE CALCULATION
@@ -269,7 +380,7 @@
     // ==========================================
     // Triggers when user clicks a list item or map marker
     const selectPort = (port) => {
-        selectedPort.value = port // Sets the "Active" port to show Windy forecast
+        selectedPort.value = port // Sets the "Active" port to show Weather details
 
         // Smooth scroll to the top so the user sees the forecast immediately
         window.scrollTo({ top: 0, behavior: 'smooth' })
@@ -317,6 +428,11 @@
         return deg * (Math.PI / 180)
     }
     // End Helper
+    // Watch for updates to displayPorts to trigger scanning
+    watch(displayPorts, () => {
+        // Debounce slightly to wait for origin to settle
+        setTimeout(scanAllRoutes, 1000)
+    }, { immediate: true })
 </script>
 
 <template>
@@ -546,6 +662,53 @@
                     </div>
                 </div>
 
+                <!-- AI Geo-Intelligence Recommendation -->
+                <div v-if="geoAnalysisResult" class="overflow-hidden bg-white shadow-xl sm:rounded-2xl border-l-8 animate-fade-in-down"
+                    :class="{
+                        'border-emerald-500': geoAnalysisResult.recommendation?.type === 'success',
+                        'border-amber-500': geoAnalysisResult.recommendation?.type === 'warning',
+                        'border-rose-500': geoAnalysisResult.recommendation?.type === 'danger'
+                    }"
+                >
+                    <div class="p-8">
+                        <h3 class="text-2xl font-bold text-gray-900 mb-2 flex items-center gap-2">
+                             <span class="text-3xl">🤖</span> FerryCast AI Recommendation
+                        </h3>
+                        <div v-if="geoAnalysisResult.recommendation">
+                            <p class="text-lg text-gray-700" v-html="geoAnalysisResult.recommendation.message"></p>
+                            
+                            <div class="mt-4 grid grid-cols-1 md:grid-cols-2 gap-4">
+                                <!-- Nearest Port Card -->
+                                <div class="bg-gray-50 p-4 rounded-lg border border-gray-200" v-if="geoAnalysisResult.nearest_any_port">
+                                   <div class="text-xs font-bold uppercase text-gray-400">Nearest Physical Jetty</div>
+                                   <div class="font-bold text-xl">{{ geoAnalysisResult.nearest_any_port.port.name }}</div>
+                                   <div class="text-sm">
+                                        {{ geoAnalysisResult.nearest_any_port.distance.toFixed(1) }} km away
+                                        <span class="font-bold" :class="{
+                                            'text-emerald-600': geoAnalysisResult.nearest_any_port.is_safe,
+                                            'text-rose-600': !geoAnalysisResult.nearest_any_port.is_safe
+                                        }">
+                                            ({{ geoAnalysisResult.nearest_any_port.risk_status }})
+                                        </span>
+                                   </div>
+                                </div>
+
+                                <!-- Recommended Port Card -->
+                                <div class="bg-emerald-50 p-4 rounded-lg border border-emerald-200" v-if="geoAnalysisResult.nearest_safe_port">
+                                   <div class="text-xs font-bold uppercase text-emerald-600">Best Safe Option</div>
+                                   <div class="font-bold text-xl text-emerald-900">{{ geoAnalysisResult.nearest_safe_port.port.name }}</div>
+                                   <div class="text-sm text-emerald-700">
+                                        {{ geoAnalysisResult.nearest_safe_port.distance.toFixed(1) }} km away
+                                        <span class="font-bold">
+                                            ({{ geoAnalysisResult.nearest_safe_port.risk_status }})
+                                        </span>
+                                   </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
                 <!-- Map Section -->
                 <div
                     class="overflow-hidden bg-white shadow-xl sm:rounded-2xl border border-blue-100"
@@ -571,13 +734,32 @@
                                     </svg>
                                     Interactive Route Map
                                 </h3>
-                                <button
-                                    v-if="!userLocation"
-                                    @click="getUserLocation"
-                                    class="bg-blue-600 px-6 py-2 rounded-full text-white font-bold shadow-lg hover:bg-blue-700 transition transform hover:scale-105"
-                                >
-                                    Detect My Location
-                                </button>
+                                <!-- Search Bar Replacement -->
+                                <div class="flex gap-2 w-full max-w-md">
+                                    <div class="relative flex-grow">
+                                        <input
+                                            v-model="searchQuery"
+                                            @keyup.enter="searchLocation"
+                                            type="text"
+                                            placeholder="Where are you? (e.g. Kuantan)"
+                                            class="w-full pl-4 pr-12 py-2 rounded-full border border-blue-200 focus:border-blue-500 focus:ring focus:ring-blue-200 outline-none shadow-sm"
+                                        >
+                                        <!-- Current Location Button -->
+                                        <button @click="getCurrentUserLocation" class="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-blue-600">
+                                             <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
+                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
+                                            </svg>
+                                        </button>
+                                    </div>
+                                    <button
+                                        @click="searchLocation"
+                                        class="bg-blue-600 px-6 py-2 rounded-full text-white font-bold shadow-lg hover:bg-blue-700 transition transform hover:scale-105 whitespace-nowrap"
+                                        :disabled="isSearching"
+                                    >
+                                        Search
+                                    </button>
+                                </div>
                             </div>
 
                             <div
@@ -588,8 +770,41 @@
                                     :routes="mapRoutes"
                                     :center="mapCenter"
                                     :zoom="mapZoom"
+                                    :weather-overlay="selectedOverlay"
                                     @marker-click="handleMapMarkerClick"
                                 />
+                            </div>
+                            <!-- Map Weather Controls (Moved here) -->
+                            <div class="mt-4 flex flex-wrap gap-2 justify-center">
+                                <button 
+                                    @click="selectedOverlay = 'wind'"
+                                    class="px-4 py-1.5 rounded-full text-xs font-bold transition border"
+                                    :class="selectedOverlay === 'wind' ? 'bg-blue-600 text-white border-blue-600 shadow-md' : 'bg-white text-gray-600 border-gray-200 hover:bg-gray-50'"
+                                >
+                                    🌪️ Wind
+                                </button>
+
+                                <button 
+                                    @click="selectedOverlay = 'precipitation'"
+                                    class="px-4 py-1.5 rounded-full text-xs font-bold transition border"
+                                    :class="selectedOverlay === 'precipitation' ? 'bg-blue-600 text-white border-blue-600 shadow-md' : 'bg-white text-gray-600 border-gray-200 hover:bg-gray-50'"
+                                >
+                                    🌧️ Rain
+                                </button>
+                                <button 
+                                    @click="selectedOverlay = 'clouds'"
+                                    class="px-4 py-1.5 rounded-full text-xs font-bold transition border"
+                                    :class="selectedOverlay === 'clouds' ? 'bg-blue-600 text-white border-blue-600 shadow-md' : 'bg-white text-gray-600 border-gray-200 hover:bg-gray-50'"
+                                >
+                                    ☁️ Clouds
+                                </button>
+                                <button 
+                                    @click="selectedOverlay = 'temp'"
+                                    class="px-4 py-1.5 rounded-full text-xs font-bold transition border"
+                                    :class="selectedOverlay === 'temp' ? 'bg-blue-600 text-white border-blue-600 shadow-md' : 'bg-white text-gray-600 border-gray-200 hover:bg-gray-50'"
+                                >
+                                    🌡️ Temp
+                                </button>
                             </div>
                             <p class="text-sm text-blue-600/60 mt-4 italic">
                                 * Blue dot represents your location. Click on
@@ -637,16 +852,55 @@
                                 </button>
                             </div>
 
-                            <div
-                                class="w-full h-[500px] rounded-xl overflow-hidden border border-blue-100 shadow-lg"
-                            >
-                                <iframe
-                                    width="100%"
-                                    height="100%"
-                                    :src="`https://embed.windy.com/embed2.html?lat=${selectedPort.latitude}&lon=${selectedPort.longitude}&detailLat=${selectedPort.latitude}&detailLon=${selectedPort.longitude}&width=650&height=450&zoom=10&level=surface&overlay=wind&product=ecmwf&menu=&message=true&marker=true&calendar=now&pressure=&type=map&location=coordinates&detail=true&metricWind=default&metricTemp=default&radarRange=-1`"
-                                    frameborder="0"
-                                ></iframe>
+
+
+                            <!-- Latest Weather Table -->
+                            <div class="mb-6 overflow-hidden border border-blue-100 rounded-xl">
+                                <table class="min-w-full divide-y divide-blue-50">
+                                    <thead class="bg-blue-50/50">
+                                        <tr>
+                                            <th scope="col" class="px-6 py-3 text-left text-xs font-bold text-blue-800 uppercase tracking-wider">Metric</th>
+                                            <th scope="col" class="px-6 py-3 text-right text-xs font-bold text-blue-800 uppercase tracking-wider">Value</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody class="bg-white divide-y divide-blue-50">
+                                        <tr>
+                                            <td class="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-600 flex items-center gap-2">
+                                                🌪️ Wind Speed
+                                            </td>
+                                            <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900 text-right font-bold">
+                                                {{ selectedPort.latest_weather ? selectedPort.latest_weather.wind_speed + ' km/h' : 'N/A' }}
+                                            </td>
+                                        </tr>
+                                        <tr>
+                                            <td class="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-600 flex items-center gap-2">
+                                                🌊 Wave Height
+                                            </td>
+                                            <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900 text-right font-bold">
+                                                {{ selectedPort.latest_weather ? selectedPort.latest_weather.wave_height + ' m' : 'N/A' }}
+                                            </td>
+                                        </tr>
+                                        <tr>
+                                            <td class="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-600 flex items-center gap-2">
+                                                🌧️ Precipitation
+                                            </td>
+                                            <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900 text-right font-bold">
+                                                {{ selectedPort.latest_weather ? selectedPort.latest_weather.precipitation + ' mm' : 'N/A' }}
+                                            </td>
+                                        </tr>
+                                        <tr>
+                                            <td class="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-600 flex items-center gap-2">
+                                                👁️ Visibility
+                                            </td>
+                                            <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900 text-right font-bold">
+                                                {{ selectedPort.latest_weather ? selectedPort.latest_weather.visibility + ' km' : 'N/A' }}
+                                            </td>
+                                        </tr>
+                                    </tbody>
+                                </table>
                             </div>
+
+
                             <div class="mt-6 flex justify-end">
                                 <a
                                     :href="
@@ -796,17 +1050,46 @@
                                 <div
                                     class="mt-6 md:mt-0 relative z-10 w-full md:w-auto"
                                 >
-                                    <button
-                                        type="button"
-                                        class="w-full md:w-auto font-bold py-3 px-8 rounded-xl shadow-md transition transform group-hover:scale-105"
-                                        :class="
-                                            index === 0
-                                                ? 'bg-emerald-600 text-white hover:bg-emerald-700'
-                                                : 'bg-blue-600 text-white hover:bg-blue-700'
-                                        "
-                                    >
-                                        Inspect Forecast
-                                    </button>
+                                    <div class="flex flex-col gap-2">
+                                        <button
+                                            type="button"
+                                            @click.stop="selectPort(port)"
+                                            class="w-full md:w-auto font-bold py-3 px-8 rounded-xl shadow-md transition transform group-hover:scale-105"
+                                            :class="
+                                                index === 0
+                                                    ? 'bg-emerald-600 text-white hover:bg-emerald-700'
+                                                    : 'bg-blue-600 text-white hover:bg-blue-700'
+                                            "
+                                        >
+                                            Inspect Forecast
+                                        </button>
+                                        
+                                        <!-- Automatic Route Status Badge (Percentage Based) -->
+                                        <div v-if="routeAnalysisResult[port.id]" 
+                                             class="mt-2 p-2 rounded-lg text-xs font-bold text-center border shadow-sm"
+                                             :class="{
+                                                 'bg-red-50 border-red-200 text-red-700': routeAnalysisResult[port.id].route_risk_score > 70,
+                                                 'bg-yellow-50 border-yellow-200 text-yellow-700': routeAnalysisResult[port.id].route_risk_score > 30 && routeAnalysisResult[port.id].route_risk_score <= 70,
+                                                 'bg-emerald-50 border-emerald-200 text-emerald-700': routeAnalysisResult[port.id].route_risk_score <= 30
+                                             }"
+                                        >
+                                            <div class="flex items-center justify-center gap-1 mb-1">
+                                                <span class="text-lg">
+                                                    {{ routeAnalysisResult[port.id].route_risk_score > 70 ? '🛑' : (routeAnalysisResult[port.id].route_risk_score > 30 ? '⚠️' : '✅') }}
+                                                </span>
+                                                <span class="uppercase tracking-wide">
+                                                    Risk: {{ routeAnalysisResult[port.id].route_risk_score }}%
+                                                </span>
+                                            </div>
+                                            <div class="flex justify-between items-center px-4 text-[10px] opacity-80 border-t border-black/5 pt-1 mt-1">
+                                                <span>Waves: <strong>{{ routeAnalysisResult[port.id].max_wave_height }}m</strong></span>
+                                                <span>{{ routeAnalysisResult[port.id].route_risk_score > 50 ? 'Deep Sea' : 'Fairway' }}</span>
+                                            </div>
+                                        </div>
+                                        <div v-else class="mt-2 text-center text-xs text-gray-400 animate-pulse">
+                                            Scanning route...
+                                        </div>
+                                    </div>
                                 </div>
 
                                 <!-- Background Decorative Ship (Subtle) -->
