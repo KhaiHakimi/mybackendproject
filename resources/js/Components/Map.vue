@@ -171,7 +171,7 @@ async function updateWeather() {
                     opacity: 1.0, 
                     colorScale: ["rgb(255,255,255)", "rgb(240,240,240)"], 
                     particleAge: 90,
-                    particleMultiplier: 0.004, // Reduced density for cleaner look
+                    particleMultiplier: 0.0015, // Significantly reduced density for cleaner look
                 });
                 
                 weatherLayer.addTo(map);
