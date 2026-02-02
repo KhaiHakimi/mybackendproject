@@ -881,14 +881,7 @@
                                                 {{ selectedPort.latest_weather ? selectedPort.latest_weather.wave_height + ' m' : 'N/A' }}
                                             </td>
                                         </tr>
-                                        <tr>
-                                            <td class="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-600 flex items-center gap-2">
-                                                🌧️ Precipitation
-                                            </td>
-                                            <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900 text-right font-bold">
-                                                {{ selectedPort.latest_weather ? selectedPort.latest_weather.precipitation + ' mm' : 'N/A' }}
-                                            </td>
-                                        </tr>
+
                                         <tr>
                                             <td class="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-600 flex items-center gap-2">
                                                 👁️ Visibility
