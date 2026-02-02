@@ -414,7 +414,20 @@ class TelegramCommandService
             return;
         }
 
-        $time = \Carbon\Carbon::parse($schedule->departure_time)->format('h:i A');
+        // Find last departure for the SAME DAY as the next schedule
+        $lastSchedule = Schedule::where('origin_port_id', $fromPort->id)
+            ->where('destination_port_id', $toPort->id)
+            ->whereDate('departure_time', $schedule->departure_time->toDateString())
+            ->orderBy('departure_time', 'desc')
+            ->first();
+
+        $startTime = \Carbon\Carbon::parse($schedule->departure_time)->format('h:i A');
+        $endTime = $lastSchedule ? \Carbon\Carbon::parse($lastSchedule->departure_time)->format('h:i A') : $startTime;
+        
+        $timeDisplay = ($startTime === $endTime) 
+            ? $startTime 
+            : "$startTime - $endTime";
+
         $date = \Carbon\Carbon::parse($schedule->departure_time)->format('d M Y');
 
         // Generate Visual Route Profile (ASCII Graph)
@@ -440,7 +453,7 @@ class TelegramCommandService
             $adviceMsg.
             $profileGraph.
             "📍 <b>Route:</b> {$fromPort->name} ➡️ {$toPort->name}\n".
-            "🕐 <b>Time:</b> $time\n".
+            "🕐 <b>Time:</b> $timeDisplay\n".
             "📅 <b>Date:</b> $date\n".
             "⛴ <b>Ferry:</b> {$schedule->ferry->name}\n".
             "💵 <b>Price:</b> RM {$schedule->price}\n".
