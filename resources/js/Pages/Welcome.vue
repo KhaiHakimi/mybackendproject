@@ -155,7 +155,7 @@
                             <div class="text-gray-900 font-semibold">Kuala Perlis</div>
                         </div>
 
-                        <Link href="/schedules" class="w-full sm:w-auto bg-yellow-400 text-blue-900 font-black px-8 py-5 rounded-2xl hover:bg-yellow-300 transition shadow-lg flex items-center justify-center whitespace-nowrap shrink-0">
+                        <Link href="/schedules?origin_port_id=3&destination_port_id=1" class="w-full sm:w-auto bg-yellow-400 text-blue-900 font-black px-8 py-5 rounded-2xl hover:bg-yellow-300 transition shadow-lg flex items-center justify-center whitespace-nowrap shrink-0">
                             Search Ferries
                         </Link>
                     </div>
