@@ -62,7 +62,7 @@
 
 <template>
     <Head title="Welcome to FerryCast — Smart Ferry Planning" />
-    <div class="min-h-screen bg-gray-50 font-sans text-gray-900 selection:bg-blue-500 selection:text-white">
+    <div class="min-h-screen bg-blue-900 font-sans text-white selection:bg-yellow-400 selection:text-blue-900">
         
         <!-- Hero Section -->
         <div class="relative bg-white">
@@ -112,7 +112,7 @@
                             <Link
                                 v-if="canRegister"
                                 :href="route('register')"
-                                class="bg-blue-600 text-white font-bold text-sm px-6 py-2.5 rounded-full hover:bg-blue-700 shadow-lg shadow-blue-900/20 transition"
+                                class="bg-yellow-400 text-blue-900 font-black text-sm px-6 py-2.5 rounded-full hover:bg-yellow-300 shadow-lg shadow-yellow-400/20 transition"
                             >
                                 Get Started
                             </Link>
@@ -155,7 +155,7 @@
                             <div class="text-gray-900 font-semibold">Kuala Perlis</div>
                         </div>
 
-                        <Link href="/schedules" class="w-full sm:w-auto bg-blue-600 text-white font-bold px-8 py-5 rounded-2xl hover:bg-blue-700 transition shadow-lg flex items-center justify-center whitespace-nowrap shrink-0">
+                        <Link href="/schedules" class="w-full sm:w-auto bg-yellow-400 text-blue-900 font-black px-8 py-5 rounded-2xl hover:bg-yellow-300 transition shadow-lg flex items-center justify-center whitespace-nowrap shrink-0">
                             Search Ferries
                         </Link>
                     </div>
@@ -164,55 +164,57 @@
         </div>
 
         <!-- Content Section -->
-        <div class="max-w-7xl mx-auto px-6 py-24">
-            
-            <!-- Stats -->
-            <div class="grid grid-cols-2 md:grid-cols-4 gap-6 mb-24 animate-fade-in-up delay-300">
-                <div class="bg-white rounded-3xl p-8 text-center shadow-[0_8px_30px_rgb(0,0,0,0.04)] border border-gray-100 hover:shadow-[0_8px_30px_rgb(0,0,0,0.08)] hover:-translate-y-1 transition-all">
-                    <div class="text-4xl font-extrabold text-blue-900 mb-2 tabular-nums">{{ displayStats.total_ferries }}</div>
-                    <div class="text-xs font-bold uppercase tracking-widest text-gray-500">Vessels</div>
+        <div class="bg-gradient-to-b from-blue-900 to-indigo-950 relative z-20">
+            <div class="max-w-7xl mx-auto px-6 py-24">
+                
+                <!-- Stats -->
+                <div class="grid grid-cols-2 md:grid-cols-4 gap-6 mb-24 animate-fade-in-up delay-300">
+                    <div class="bg-white/5 backdrop-blur-md rounded-3xl p-8 text-center border border-white/10 hover:bg-white/10 hover:-translate-y-1 transition-all">
+                        <div class="text-4xl font-extrabold text-white mb-2 tabular-nums">{{ displayStats.total_ferries }}</div>
+                        <div class="text-xs font-bold uppercase tracking-widest text-blue-300">Vessels</div>
+                    </div>
+                    <div class="bg-white/5 backdrop-blur-md rounded-3xl p-8 text-center border border-white/10 hover:bg-white/10 hover:-translate-y-1 transition-all">
+                        <div class="text-4xl font-extrabold text-white mb-2 tabular-nums">{{ displayStats.active_routes }}</div>
+                        <div class="text-xs font-bold uppercase tracking-widest text-blue-300">Routes</div>
+                    </div>
+                    <div class="bg-white/5 backdrop-blur-md rounded-3xl p-8 text-center border border-white/10 hover:bg-white/10 hover:-translate-y-1 transition-all">
+                        <div class="text-4xl font-extrabold text-white mb-2 tabular-nums">{{ displayStats.total_ports }}</div>
+                        <div class="text-xs font-bold uppercase tracking-widest text-blue-300">Ports</div>
+                    </div>
+                    <div class="bg-white/5 backdrop-blur-md rounded-3xl p-8 text-center border border-white/10 hover:bg-white/10 hover:-translate-y-1 transition-all">
+                        <div class="text-4xl font-extrabold text-white mb-2 tabular-nums">{{ displayStats.total_bookings }}</div>
+                        <div class="text-xs font-bold uppercase tracking-widest text-blue-300">Bookings</div>
+                    </div>
                 </div>
-                <div class="bg-white rounded-3xl p-8 text-center shadow-[0_8px_30px_rgb(0,0,0,0.04)] border border-gray-100 hover:shadow-[0_8px_30px_rgb(0,0,0,0.08)] hover:-translate-y-1 transition-all">
-                    <div class="text-4xl font-extrabold text-blue-900 mb-2 tabular-nums">{{ displayStats.active_routes }}</div>
-                    <div class="text-xs font-bold uppercase tracking-widest text-gray-500">Routes</div>
-                </div>
-                <div class="bg-white rounded-3xl p-8 text-center shadow-[0_8px_30px_rgb(0,0,0,0.04)] border border-gray-100 hover:shadow-[0_8px_30px_rgb(0,0,0,0.08)] hover:-translate-y-1 transition-all">
-                    <div class="text-4xl font-extrabold text-blue-900 mb-2 tabular-nums">{{ displayStats.total_ports }}</div>
-                    <div class="text-xs font-bold uppercase tracking-widest text-gray-500">Ports</div>
-                </div>
-                <div class="bg-white rounded-3xl p-8 text-center shadow-[0_8px_30px_rgb(0,0,0,0.04)] border border-gray-100 hover:shadow-[0_8px_30px_rgb(0,0,0,0.08)] hover:-translate-y-1 transition-all">
-                    <div class="text-4xl font-extrabold text-blue-900 mb-2 tabular-nums">{{ displayStats.total_bookings }}</div>
-                    <div class="text-xs font-bold uppercase tracking-widest text-gray-500">Bookings</div>
-                </div>
-            </div>
 
-            <!-- Features -->
-            <div class="text-center max-w-3xl mx-auto mb-16 animate-fade-in-up delay-400">
-                <h2 class="text-3xl font-extrabold text-gray-900 mb-4">Everything you need for a smooth journey</h2>
-                <p class="text-gray-500 text-lg">We combine real-time data with AI to ensure your ferry travel is safe, reliable, and entirely hassle-free.</p>
-            </div>
-
-            <div class="grid grid-cols-1 md:grid-cols-3 gap-8 animate-fade-in-up delay-500">
-                <div
-                    v-for="(feature, index) in features"
-                    :key="index"
-                    class="bg-white rounded-3xl p-8 shadow-[0_8px_30px_rgb(0,0,0,0.04)] border border-gray-100 hover:shadow-[0_8px_30px_rgb(0,0,0,0.12)] hover:-translate-y-1 transition-all duration-300"
-                >
-                    <div class="w-14 h-14 bg-blue-50 text-blue-600 rounded-2xl flex items-center justify-center mb-6" v-html="feature.icon"></div>
-                    <h3 class="text-gray-900 font-bold text-xl mb-3">{{ feature.title }}</h3>
-                    <p class="text-gray-500 leading-relaxed">{{ feature.desc }}</p>
+                <!-- Features -->
+                <div class="text-center max-w-3xl mx-auto mb-16 animate-fade-in-up delay-400">
+                    <h2 class="text-3xl font-extrabold text-white mb-4">Everything you need for a smooth journey</h2>
+                    <p class="text-blue-200 text-lg">We combine real-time data with AI to ensure your ferry travel is safe, reliable, and entirely hassle-free.</p>
                 </div>
+
+                <div class="grid grid-cols-1 md:grid-cols-3 gap-8 animate-fade-in-up delay-500">
+                    <div
+                        v-for="(feature, index) in features"
+                        :key="index"
+                        class="bg-white/5 backdrop-blur-md rounded-3xl p-8 border border-white/10 hover:bg-white/10 hover:border-white/20 hover:-translate-y-1 transition-all duration-300"
+                    >
+                        <div class="w-14 h-14 bg-blue-800 text-yellow-400 rounded-2xl flex items-center justify-center mb-6" v-html="feature.icon"></div>
+                        <h3 class="text-white font-bold text-xl mb-3">{{ feature.title }}</h3>
+                        <p class="text-blue-200 leading-relaxed">{{ feature.desc }}</p>
+                    </div>
+                </div>
+                
             </div>
-            
         </div>
 
         <!-- Footer -->
-        <footer class="bg-white border-t border-gray-100 py-12">
+        <footer class="bg-indigo-950 border-t border-white/10 py-12 relative z-20">
             <div class="max-w-7xl mx-auto px-6 flex flex-col md:flex-row items-center justify-between">
                 <div class="flex items-center mb-4 md:mb-0 transform hover:scale-105 transition">
-                    <ApplicationLogo class="text-blue-900" />
+                    <ApplicationLogo class="text-white" />
                 </div>
-                <p class="text-gray-400 text-sm font-medium">
+                <p class="text-blue-400/60 text-sm font-medium">
                     © 2025-2026 FerryCast. Built with Laravel v{{ laravelVersion }}.
                 </p>
             </div>
