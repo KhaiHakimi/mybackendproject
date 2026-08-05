@@ -75,9 +75,16 @@ class ScheduleController extends Controller
         // Cached reference data
         $ferries = Cache::remember('ferries.list_all', 3600, fn () => Ferry::all());
 
-        $activePorts = Cache::remember('ports.active', 3600, function () {
-            return Port::whereHas('departures')->orWhereHas('arrivals')->with('latestWeather')->get();
-        });
+        $activePorts = Port::whereHas('departures')->orWhereHas('arrivals')->with('latestWeather')->get();
+        
+        // Ensure real-time weather updates (max 15 mins old)
+        $weatherService = app(\App\Services\WeatherService::class);
+        foreach ($activePorts as $port) {
+            if (!$port->latestWeather || $port->latestWeather->recorded_at->diffInMinutes(now()) > 15) {
+                $weatherService->updateWeatherForPort($port);
+                $port->load('latestWeather'); // Refresh relation
+            }
+        }
 
         // Build port-keyed weather lookup for schedule badges
         $portWeather = [];
