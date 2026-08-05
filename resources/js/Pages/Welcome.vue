@@ -68,7 +68,7 @@
         <div class="relative bg-white">
             <!-- Background Image -->
             <div class="absolute inset-0 z-0">
-                <img class="w-full h-full object-cover" src="/images/ferry.jpeg" alt="Ferry on the water" />
+                <img class="w-full h-full object-cover" :src="'/images/ferry.jpeg'" alt="Ferry on the water" />
                 <!-- Gradient Overlay -->
                 <div class="absolute inset-0 bg-gradient-to-b from-black/60 via-black/30 to-black/60"></div>
             </div>
