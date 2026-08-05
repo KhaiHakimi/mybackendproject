@@ -61,8 +61,10 @@
 </script>
 
 <template>
-    <Head title="Welcome to FerryCast — Smart Ferry Planning" />
-    <div class="min-h-screen bg-blue-900 font-sans text-white selection:bg-yellow-400 selection:text-blue-900">
+    <Head title="Welcome to FerryCast — Smart Ferry Planning">
+        <meta name="description" content="The complete platform for Malaysian ferry travel. Book tickets, check live schedules, and travel with confidence using our AI-powered weather intelligence." />
+    </Head>
+    <main class="min-h-screen bg-blue-900 font-sans text-white selection:bg-yellow-400 selection:text-blue-900">
         
         <!-- Hero Section -->
         <div class="relative bg-white">
@@ -83,6 +85,7 @@
 
                 <div class="flex items-center gap-6">
                     <Link
+                        id="nav-schedules-link"
                         href="/schedules"
                         class="text-white/90 hover:text-white font-semibold text-sm transition hidden sm:inline-block"
                     >
@@ -97,6 +100,7 @@
                     <template v-if="canLogin">
                         <Link
                             v-if="$page.props.auth.user"
+                            id="nav-dashboard-link"
                             :href="route('dashboard')"
                             class="bg-white text-blue-900 font-bold px-6 py-2.5 rounded-full hover:bg-gray-100 transition shadow-lg text-sm"
                         >
@@ -104,6 +108,7 @@
                         </Link>
                         <template v-else>
                             <Link
+                                id="nav-login-link"
                                 :href="route('login')"
                                 class="text-white font-semibold text-sm hover:text-gray-200 transition"
                             >
@@ -111,6 +116,7 @@
                             </Link>
                             <Link
                                 v-if="canRegister"
+                                id="nav-register-link"
                                 :href="route('register')"
                                 class="bg-yellow-400 text-blue-900 font-black text-sm px-6 py-2.5 rounded-full hover:bg-yellow-300 shadow-lg shadow-yellow-400/20 transition"
                             >
@@ -155,7 +161,7 @@
                             <div class="text-gray-900 font-semibold">Kuala Perlis</div>
                         </div>
 
-                        <Link href="/schedules?origin_port_id=3&destination_port_id=1" class="w-full sm:w-auto bg-yellow-400 text-blue-900 font-black px-8 py-5 rounded-2xl hover:bg-yellow-300 transition shadow-lg flex items-center justify-center whitespace-nowrap shrink-0">
+                        <Link id="search-ferries-button" href="/schedules?origin_port_id=3&destination_port_id=1" class="w-full sm:w-auto bg-yellow-400 text-blue-900 font-black px-8 py-5 rounded-2xl hover:bg-yellow-300 transition shadow-lg flex items-center justify-center whitespace-nowrap shrink-0">
                             Search Ferries
                         </Link>
                     </div>
@@ -219,7 +225,7 @@
                 </p>
             </div>
         </footer>
-    </div>
+    </main>
 </template>
 
 <style>

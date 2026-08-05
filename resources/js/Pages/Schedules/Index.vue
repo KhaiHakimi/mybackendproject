@@ -1,14 +1,16 @@
 <template>
-    <Head title="Ferry Schedules" />
+    <Head title="Ferry Schedules">
+        <meta name="description" content="Check live ferry schedules, timetables, and weather conditions for Malaysian ferry routes. Book your tickets easily." />
+    </Head>
 
     <GuestLayout :fullWidth="true">
         <template #header>
-            <h2 class="text-2xl font-extrabold leading-tight text-blue-900">
+            <h1 id="schedules-page-title" class="text-2xl font-extrabold leading-tight text-blue-900">
                 Marine Timetables
-            </h2>
+            </h1>
         </template>
 
-        <div class="py-12 bg-cream-50 min-h-screen">
+        <main class="py-12 bg-cream-50 min-h-screen">
             <div class="mx-auto max-w-[1600px] px-4 sm:px-6 lg:px-8 space-y-8">
 
                 <!-- 0. LIVE DEPARTURE BOARD -->
@@ -1339,6 +1341,7 @@
                 </form>
             </div>
         </Modal>
+        </main>
 
         <!-- No Booking Modal Available Here -->
     </GuestLayout>
