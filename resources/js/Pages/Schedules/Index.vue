@@ -1156,7 +1156,7 @@
                     </div>
                 </div>
             </div>
-        </div>
+        </main>
 
         <!-- Edit Voyage Modal -->
         <Modal :show="isEditModalOpen" @close="closeEditModal">
@@ -1341,7 +1341,6 @@
                 </form>
             </div>
         </Modal>
-        </main>
 
         <!-- No Booking Modal Available Here -->
     </GuestLayout>
