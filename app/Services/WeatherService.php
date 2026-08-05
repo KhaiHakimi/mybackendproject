@@ -143,7 +143,7 @@ class WeatherService
                         'units' => 'metric',
                     ]);
 
-                    $marine = Http::timeout(3)->get('https://marine-api.open-meteo.com/v1/marine', [
+                    $marine = Http::timeout(10)->get('https://marine-api.open-meteo.com/v1/marine', [
                         'latitude'  => $lat,
                         'longitude' => $lon,
                         'current'   => 'wave_height,wave_direction,wave_period,swell_wave_height',
