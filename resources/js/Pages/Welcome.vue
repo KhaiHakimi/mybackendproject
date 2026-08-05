@@ -68,18 +68,17 @@
         <div class="relative bg-white">
             <!-- Background Image -->
             <div class="absolute inset-0 z-0">
-                <img class="w-full h-full object-cover" src="https://images.unsplash.com/photo-1544644181-1484b3fdfc62?ixlib=rb-4.0.3&auto=format&fit=crop&w=2070&q=80" alt="Ferry on tropical water" />
+                <img class="w-full h-full object-cover" src="https://images.unsplash.com/photo-1590483864757-0b1a0395374e?ixlib=rb-4.0.3&auto=format&fit=crop&w=2070&q=80" alt="Ferry on the water" />
                 <!-- Gradient Overlay -->
                 <div class="absolute inset-0 bg-gradient-to-b from-black/60 via-black/30 to-black/60"></div>
             </div>
 
             <!-- Navigation -->
             <nav class="relative z-20 px-6 py-6 flex items-center justify-between max-w-7xl mx-auto border-b border-white/10">
-                <Link href="/" class="flex items-center gap-3 group">
+                <Link href="/" class="flex items-center group">
                     <div class="transform group-hover:scale-105 transition-transform">
-                        <ApplicationLogo class="w-10 h-10 text-white" />
+                        <ApplicationLogo class="text-white" />
                     </div>
-                    <span class="text-white font-extrabold text-xl tracking-tight hidden sm:block">FerryCast</span>
                 </Link>
 
                 <div class="flex items-center gap-6">
@@ -210,9 +209,8 @@
         <!-- Footer -->
         <footer class="bg-white border-t border-gray-100 py-12">
             <div class="max-w-7xl mx-auto px-6 flex flex-col md:flex-row items-center justify-between">
-                <div class="flex items-center gap-2 mb-4 md:mb-0">
-                    <ApplicationLogo class="w-6 h-6 text-blue-900" />
-                    <span class="font-extrabold text-gray-900">FerryCast</span>
+                <div class="flex items-center mb-4 md:mb-0 transform hover:scale-105 transition">
+                    <ApplicationLogo class="text-blue-900" />
                 </div>
                 <p class="text-gray-400 text-sm font-medium">
                     © 2025-2026 FerryCast. Built with Laravel v{{ laravelVersion }}.
