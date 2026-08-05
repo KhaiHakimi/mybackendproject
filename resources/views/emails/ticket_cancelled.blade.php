@@ -9,7 +9,7 @@
         .main { background-color: #ffffff; margin: 0 auto; width: 100%; max-width: 600px; border-radius: 12px; box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05); overflow: hidden; }
         .header-banner { 
             background-color: #0f172a; 
-            background-image: url('{{ asset('images/email-banner.png') }}'); 
+            background-image: url('{{ asset('images/ferry.jpeg') }}'); 
             background-size: cover; 
             background-position: center; 
             padding: 50px 20px; 
