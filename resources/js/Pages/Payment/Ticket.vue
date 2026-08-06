@@ -118,27 +118,8 @@ const formatTime = (dateString) => {
                             Please present this e-ticket along with your IC/Passport at the terminal. Boarding gate closes 30 minutes prior to departure.
                         </p>
                     </div>
-                    
-                    <!-- SVG Barcode (Simulated) -->
-                    <div class="flex flex-col items-center ml-4">
-                        <div class="flex h-12 mb-1 gap-[2px]">
-                            <div class="w-1 bg-black h-full"></div>
-                            <div class="w-2 bg-black h-full"></div>
-                            <div class="w-1 bg-black h-full"></div>
-                            <div class="w-[2px] bg-black h-full"></div>
-                            <div class="w-1 bg-black h-full"></div>
-                            <div class="w-[2px] bg-black h-full"></div>
-                            <div class="w-3 bg-black h-full"></div>
-                            <div class="w-1 bg-black h-full"></div>
-                            <div class="w-[2px] bg-black h-full"></div>
-                            <div class="w-1 bg-black h-full"></div>
-                            <div class="w-2 bg-black h-full"></div>
-                            <div class="w-1 bg-black h-full"></div>
-                            <div class="w-[2px] bg-black h-full"></div>
-                            <div class="w-2 bg-black h-full"></div>
-                            <div class="w-1 bg-black h-full"></div>
-                        </div>
-                        <p class="text-[10px] font-mono font-bold tracking-widest text-gray-500">{{ booking.booking_reference }}</p>
+                    <div class="text-right">
+                        <p class="text-[10px] font-mono font-bold tracking-widest text-gray-500 mt-2">{{ booking.booking_reference }}</p>
                     </div>
                 </div>
             </div>

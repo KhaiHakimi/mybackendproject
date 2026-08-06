@@ -237,7 +237,7 @@ def predict_cancellation(model, features: dict) -> dict:
 
 def _explain_prediction(features: dict, cancel_prob: float) -> list:
     """
-    Generate human-readable explanations of why the model made its
+    explanations of why the model made its
     prediction, based on feature thresholds that maritime operators
     actually use when deciding to cancel a route.
     """

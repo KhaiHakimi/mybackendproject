@@ -48,9 +48,9 @@
         return userLocation.value
     })
 
-    // ==========================================
+
     // 1. INITIALIZE & RESTORE STATE
-    // ==========================================
+
     onMounted(() => {
         // Check if we have a saved location in browser storage from a previous session
         const savedLoc = localStorage.getItem('user_location')
@@ -96,9 +96,9 @@
         }
     })
 
-    // ==========================================
+
     // 2. MAP DATA PREPARATION
-    // ==========================================
+ 
     const peninsularPorts = computed(() => {
         return allPorts.value.filter((port) => {
             const loc = (port.location || '').toLowerCase()
@@ -372,9 +372,9 @@
 
 
 
-    // ==========================================
+ 
     // 3. SEARCH LOCATION (OpenStreetMap Nominatim)
-    // ==========================================
+    
     const searchLocation = async () => {
         if (!searchQuery.value) return
         
@@ -469,9 +469,9 @@
     }
 
 
-    // ==========================================
+
     // 4. DISTANCE CALCULATION
-    // ==========================================
+ 
     // Computes distance from User to Each Port using simple math
     const calculateDistances = () => {
         const origin = currentOrigin.value

@@ -224,7 +224,7 @@ class RecommendationController extends Controller
 
     public function diagnosticsPage()
     {
-        // Mock data reflecting the Python AI pipeline details
+        //data reflecting the Python AI pipeline details
         $diagnostics = [
             'evaluation' => [
                 'random_forest' => [

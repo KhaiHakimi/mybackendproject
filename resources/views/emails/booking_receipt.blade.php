@@ -46,13 +46,7 @@
             padding-bottom: 30px;
             border-bottom: 2px dashed #e2e8f0;
         }
-        .qr-code {
-            width: 150px;
-            height: 150px;
-            border: 4px solid #f1f5f9;
-            border-radius: 8px;
-            padding: 5px;
-        }
+
         .booking-ref {
             font-family: monospace;
             font-size: 18px;
@@ -108,10 +102,7 @@
         
         <div class="content">
             <div class="qr-section">
-                <!-- Using a free QR code generation API -->
-                <img class="qr-code" src="https://api.qrserver.com/v1/create-qr-code/?size=150x150&data={{ urlencode($booking->booking_reference) }}" alt="QR Code">
                 <div class="booking-ref">{{ $booking->booking_reference }}</div>
-                <div style="font-size: 12px; color: #94a3b8; margin-top: 5px;">Show this QR code at the terminal</div>
             </div>
 
             <table class="details-grid">
