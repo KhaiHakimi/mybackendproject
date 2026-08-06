@@ -1440,7 +1440,7 @@
         destination_port_id: '',
         departure_time: '',
         arrival_time: '',
-        price: '',
+        price: 0,
     })
 
     // Admin Edit Form
@@ -1451,7 +1451,7 @@
         destination_port_id: '',
         departure_time: '',
         arrival_time: '',
-        price: '',
+        price: 0,
     })
 
     const isEditModalOpen = ref(false)

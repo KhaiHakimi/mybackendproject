@@ -48,7 +48,7 @@ class FerryController extends Controller
             'capacity' => 'required|integer|min:1',
             'operator' => 'nullable|string|max:255',
             'description' => 'nullable|string',
-            'price' => 'nullable|string|max:255',
+            'price' => 'nullable|numeric|min:0',
             'length_ft' => 'nullable|string|max:50',
             'rating' => 'nullable|numeric|min:0|max:5',
             'reviews_count' => 'nullable|integer|min:0',
@@ -67,8 +67,7 @@ class FerryController extends Controller
         // Set defaults for non-nullable fields if they are null
         $validated['rating'] = $validated['rating'] ?? 0;
         $validated['reviews_count'] = $validated['reviews_count'] ?? 0;
-        // Price is now string/nullable, but if logic needs it not null:
-        $validated['price'] = $validated['price'] ?? 'N/A';
+        $validated['price'] = $validated['price'] ?? 0;
 
         Ferry::create($validated);
 
@@ -97,7 +96,7 @@ class FerryController extends Controller
             'capacity' => 'nullable|integer|min:1',
             'operator' => 'nullable|string|max:255',
             'description' => 'nullable|string',
-            'price' => 'nullable|string|max:255',
+            'price' => 'nullable|numeric|min:0',
             'length_ft' => 'nullable|string|max:50',
             'image' => 'nullable|image|max:10240',
             'amenities' => 'nullable|array',
@@ -131,9 +130,8 @@ class FerryController extends Controller
         if (array_key_exists('reviews_count', $validated) && is_null($validated['reviews_count'])) {
             $validated['reviews_count'] = 0;
         }
-        // Price logic updated for string
         if (array_key_exists('price', $validated) && is_null($validated['price'])) {
-            $validated['price'] = 'N/A';
+            $validated['price'] = 0;
         }
 
         $ferry->update($validated);

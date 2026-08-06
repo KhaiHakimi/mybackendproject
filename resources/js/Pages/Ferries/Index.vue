@@ -36,7 +36,7 @@
         capacity: '',
         operator: '',
         description: '',
-        price: '',
+        price: 0,
         ticket_type: 'Online Booking',
         length_ft: '',
         rating: '',
@@ -412,7 +412,8 @@
                         />
                         <TextInput
                             id="price"
-                            type="text"
+                            type="number"
+                            step="0.01"
                             class="w-full bg-blue-50/50 border-blue-50 rounded-2xl py-3 px-4 font-bold text-blue-900 focus:ring-blue-500"
                             v-model="form.price"
                         />
