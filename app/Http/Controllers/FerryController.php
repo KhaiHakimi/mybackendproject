@@ -50,8 +50,6 @@ class FerryController extends Controller
             'description' => 'nullable|string',
             'price' => 'nullable|numeric|min:0',
             'length_ft' => 'nullable|string|max:50',
-            'rating' => 'nullable|numeric|min:0|max:5',
-            'reviews_count' => 'nullable|integer|min:0',
             'booking_url' => 'nullable|url|max:255',
             'ticket_type' => 'nullable|string|max:50',
         ]);
@@ -65,8 +63,6 @@ class FerryController extends Controller
         unset($validated['image']);
 
         // Set defaults for non-nullable fields if they are null
-        $validated['rating'] = $validated['rating'] ?? 0;
-        $validated['reviews_count'] = $validated['reviews_count'] ?? 0;
         $validated['price'] = $validated['price'] ?? 0;
 
         Ferry::create($validated);
@@ -100,8 +96,6 @@ class FerryController extends Controller
             'length_ft' => 'nullable|string|max:50',
             'image' => 'nullable|image|max:10240',
             'amenities' => 'nullable|array',
-            'rating' => 'nullable|numeric|min:0|max:5',
-            'reviews_count' => 'nullable|integer|min:0',
             'booking_url' => 'nullable|url|max:255',
             'ticket_type' => 'nullable|string|max:50',
         ]);
@@ -124,12 +118,6 @@ class FerryController extends Controller
         // Assuming Inertia form sends all fields.
 
         // Ensure non-nullable fields are not set to null
-        if (array_key_exists('rating', $validated) && is_null($validated['rating'])) {
-            $validated['rating'] = 0;
-        }
-        if (array_key_exists('reviews_count', $validated) && is_null($validated['reviews_count'])) {
-            $validated['reviews_count'] = 0;
-        }
         if (array_key_exists('price', $validated) && is_null($validated['price'])) {
             $validated['price'] = 0;
         }
@@ -156,68 +144,12 @@ class FerryController extends Controller
     /**
      * Display the specified resource for public view.
      */
-    /**
-     * Display the specified resource for public view.
-     */
-    public function publicShow(Ferry $ferry, \App\Services\GooglePlacesService $googlePlaces)
+    public function publicShow(Ferry $ferry)
     {
         $ferry->load(['schedules']);
-        // Note: We no longer load local 'reviews' relationship as we use external sources.
-
-        $googleReviews = [];
-        $ratingDistribution = [5 => 0, 4 => 0, 3 => 0, 2 => 0, 1 => 0];
-
-        // Fetch external reviews if linked
-        $placeDetails = null;
-
-        if ($ferry->google_place_id) {
-            // Cache external data for 24 hours (1440 mins) to avoid hitting API limit and improve speed
-            $placeDetails = Cache::remember("ferry.{$ferry->id}.google_details", 1440 * 60, function () use ($ferry, $googlePlaces) {
-                return $googlePlaces->getPlaceDetails($ferry->google_place_id);
-            });
-
-            if ($placeDetails) {
-                // Update local cache of rating (optional, but good for list views)
-                // We only update if it has changed significantly to avoid DB thrashing
-                if ($ferry->rating != ($placeDetails['rating'] ?? $ferry->rating)) {
-                    $ferry->update([
-                        'rating' => $placeDetails['rating'] ?? $ferry->rating,
-                        'reviews_count' => $placeDetails['user_ratings_total'] ?? $ferry->reviews_count,
-                    ]);
-                    // If we updated the ferry, invalidate list cache
-                    Cache::forget('ferries.all');
-                }
-
-                if (isset($placeDetails['reviews'])) {
-                    $googleReviews = $googlePlaces->formatReviews($placeDetails['reviews']);
-
-                    // Approximate distribution from available reviews (limit of 5 usually)
-                    foreach ($placeDetails['reviews'] as $r) {
-                        $rating = round($r['rating']);
-                        if (isset($ratingDistribution[$rating])) {
-                            $ratingDistribution[$rating]++;
-                        }
-                    }
-                }
-            }
-        }
-
-        // Pass 'reviews' as a merged list (currently just Google, but extensible)
-        $ferry->reviews = $googleReviews;
 
         return Inertia::render('Ferries/PublicShow', [
             'ferry' => $ferry,
-            'ratingDistribution' => $ratingDistribution,
-            'externalSource' => true, // Flag for frontend to know these are external
         ]);
-    }
-
-    /**
-     * Store a new review for a ferry.
-     * DEPRECATED: Reviews are now handled via external platforms (Google Maps).
-     */
-    public function storeReview(Request $request, Ferry $ferry)
-    {
-        return redirect()->back()->with('error', 'Review submission is disabled. Please review us on Google Maps.');
     }
 }

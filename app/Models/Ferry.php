@@ -12,8 +12,6 @@ class Ferry extends Model
         'operator',
         'operator_id',
         'image_path',
-        'rating',
-        'reviews_count',
         'length_ft',
         'amenities',
         'price',
@@ -31,11 +29,6 @@ class Ferry extends Model
     public function schedules()
     {
         return $this->hasMany(Schedule::class);
-    }
-
-    public function reviews()
-    {
-        return $this->hasMany(Review::class);
     }
 
     /**

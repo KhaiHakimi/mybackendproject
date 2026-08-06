@@ -5,20 +5,7 @@
 
     const props = defineProps({
         ferry: Object,
-        ratingDistribution: Object,
     })
-
-    const form = useForm({
-        rating: 5,
-        comment: '',
-    })
-
-    const submitReview = () => {
-        form.post(route('ferries.reviews.store', props.ferry.id), {
-            onSuccess: () => form.reset(),
-            preserveScroll: true,
-        })
-    }
 
     const getImageUrl = (path) => {
         return (
@@ -36,11 +23,6 @@
         return new Date(dateString).toLocaleDateString('en-GB', options)
     }
 
-    // Calculate percent for distribution bars
-    const getPercent = (count) => {
-        const total = props.ferry.reviews_count || 1
-        return Math.round((count / total) * 100)
-    }
 </script>
 
 <template>
@@ -76,9 +58,9 @@
         <div class="py-12 bg-cream-50 min-h-screen">
             <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
                 <!-- Main Content Grid -->
-                <div class="grid grid-cols-1 lg:grid-cols-3 gap-10">
-                    <!-- Left Column: Ferry Details -->
-                    <div class="lg:col-span-2 space-y-10">
+                <div class="grid grid-cols-1 gap-10">
+                    <!-- Ferry Details -->
+                    <div class="space-y-10">
                         <!-- Hero Section -->
                         <div
                             class="bg-white rounded-[3rem] overflow-hidden shadow-2xl border border-blue-50 relative"
@@ -400,151 +382,7 @@
                         </div>
                     </div>
 
-                    <!-- Right Column: Ratings & Reviews -->
-                    <div class="space-y-10">
-                        <!-- External Review CTA -->
-                        <div
-                            class="bg-white rounded-[2.5rem] p-10 shadow-2xl relative overflow-hidden transform hover:-rotate-1 transition-transform border border-blue-50"
-                        >
-                            <h3
-                                class="text-xl font-black text-blue-900 mb-6 uppercase tracking-widest"
-                            >
-                                Feedback & Ratings
-                            </h3>
-                            <div class="relative z-10 text-center">
-                                <p class="text-blue-900/70 font-bold mb-8">
-                                    We value transparency. Our ratings and
-                                    reviews are verified and synced directly
-                                    from Google Maps to ensure authenticity.
-                                </p>
 
-                                <a
-                                    v-if="ferry.google_place_id"
-                                    :href="`https://search.google.com/local/writereview?placeid=${ferry.google_place_id}`"
-                                    target="_blank"
-                                    class="w-full inline-flex justify-center bg-blue-900 text-white font-black py-4 rounded-2xl hover:bg-[#4285F4] transition-all shadow-xl uppercase tracking-[0.2em] text-xs items-center gap-3"
-                                >
-                                    <svg
-                                        class="w-5 h-5"
-                                        viewBox="0 0 24 24"
-                                        fill="currentColor"
-                                    >
-                                        <path
-                                            d="M21.35 11.1h-9.17v2.73h6.51c-.33 3.81-3.5 5.44-6.5 5.44C8.36 19.27 5 16.25 5 12c0-4.1 3.2-7.27 7.2-7.27 3.09 0 4.9 1.97 4.9 1.97L19 4.72S16.64 2 12 2C6.48 2 2 6.48 2 12s4.48 10 10 10c4.59 0 9.13-3.23 9.53-9.14.05-.75-.17-.76-.17-.76z"
-                                        />
-                                    </svg>
-                                    Write a Review on Google
-                                </a>
-                                <div
-                                    v-else
-                                    class="text-xs text-blue-300 font-bold uppercase tracking-widest mt-4"
-                                >
-                                    Integration Pending
-                                </div>
-                            </div>
-                            <!-- Decorative background -->
-                            <div
-                                class="absolute -right-10 -bottom-10 w-40 h-40 bg-blue-50 rounded-full blur-3xl pointer-events-none"
-                            ></div>
-                        </div>
-
-                        <!-- Recent Reviews List -->
-                        <div class="space-y-6">
-                            <h3
-                                class="text-xl font-black text-blue-900 px-2 uppercase tracking-tighter"
-                            >
-                                Verified Voyages (Google Reviews)
-                            </h3>
-                            <div
-                                v-if="ferry.reviews && ferry.reviews.length > 0"
-                                class="space-y-4"
-                            >
-                                <div
-                                    v-for="review in ferry.reviews"
-                                    :key="review.id"
-                                    class="bg-white p-8 rounded-3xl shadow-xl border border-blue-50 transform transition-all hover:scale-[1.02]"
-                                >
-                                    <div
-                                        class="flex justify-between items-start mb-6"
-                                    >
-                                        <div class="flex items-center">
-                                            <img
-                                                v-if="review.user.avatar"
-                                                :src="review.user.avatar"
-                                                class="w-12 h-12 rounded-2xl shadow-lg mr-4 object-cover"
-                                                referrerpolicy="no-referrer"
-                                            />
-                                            <div
-                                                v-else
-                                                class="w-12 h-12 rounded-2xl bg-blue-50 text-blue-900 flex items-center justify-center font-black text-lg mr-4 shadow-lg"
-                                            >
-                                                {{ review.user.name.charAt(0) }}
-                                            </div>
-                                            <div>
-                                                <div
-                                                    class="text-base font-black text-blue-900 tracking-tight"
-                                                >
-                                                    {{ review.user.name }}
-                                                </div>
-                                                <div
-                                                    class="text-[10px] font-black text-blue-300 uppercase tracking-widest flex items-center"
-                                                >
-                                                    {{
-                                                        formatDate(
-                                                            review.created_at,
-                                                        )
-                                                    }}
-                                                    <span
-                                                        v-if="
-                                                            review.source ===
-                                                            'Google Maps'
-                                                        "
-                                                        class="ml-2 px-2 py-0.5 bg-gray-100 text-gray-500 rounded-md text-[8px] flex items-center gap-1"
-                                                    >
-                                                        <svg
-                                                            class="w-3 h-3"
-                                                            viewBox="0 0 24 24"
-                                                            fill="currentColor"
-                                                        >
-                                                            <path
-                                                                d="M21.35 11.1h-9.17v2.73h6.51c-.33 3.81-3.5 5.44-6.5 5.44C8.36 19.27 5 16.25 5 12c0-4.1 3.2-7.27 7.2-7.27 3.09 0 4.9 1.97 4.9 1.97L19 4.72S16.64 2 12 2C6.48 2 2 6.48 2 12s4.48 10 10 10c4.59 0 9.13-3.23 9.53-9.14.05-.75-.17-.76-.17-.76z"
-                                                            />
-                                                        </svg>
-                                                        GOOGLE
-                                                    </span>
-                                                </div>
-                                            </div>
-                                        </div>
-                                        <div
-                                            class="bg-yellow-50 px-3 py-1 rounded-lg border border-yellow-100 flex text-yellow-500 text-xs font-black items-center"
-                                        >
-                                            {{ review.rating }}
-                                            <svg
-                                                class="w-3 h-3 ml-1 fill-current"
-                                                viewBox="0 0 20 20"
-                                            >
-                                                <path
-                                                    d="M10 15l-5.878 3.09 1.123-6.545L.489 6.91l6.572-.955L10 0l2.939 5.955 6.572.955-4.756 4.635 1.123 6.545z"
-                                                />
-                                            </svg>
-                                        </div>
-                                    </div>
-                                    <p
-                                        class="text-blue-900/70 font-medium leading-relaxed italic border-l-2 border-blue-100 pl-4"
-                                    >
-                                        "{{ review.comment }}"
-                                    </p>
-                                </div>
-                            </div>
-                            <div
-                                v-else
-                                class="text-center py-16 text-blue-300 bg-white rounded-[2.5rem] border-4 border-dashed border-blue-50 font-bold italic"
-                            >
-                                No voyage logs recorded yet. <br />
-                                Be the first to transmit your data!
-                            </div>
-                        </div>
-                    </div>
                 </div>
             </div>
         </div>

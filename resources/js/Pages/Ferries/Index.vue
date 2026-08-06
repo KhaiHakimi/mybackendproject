@@ -39,8 +39,6 @@
         price: 0,
         ticket_type: 'Online Booking',
         length_ft: '',
-        rating: '',
-        reviews_count: '',
         amenities: [],
         image: null,
     })
@@ -65,8 +63,6 @@
             form.price = ferry.price
             form.ticket_type = ferry.ticket_type || 'Walk-in / Counter'
             form.length_ft = ferry.length_ft
-            form.rating = ferry.rating
-            form.reviews_count = ferry.reviews_count
             form.amenities = ferry.amenities || []
             form.image = null
             previewImage.value = ferry.image_path
@@ -215,27 +211,7 @@
                         </div>
 
                         <div class="p-8 flex-1 flex flex-col bg-white">
-                            <div class="flex items-center justify-between mb-6">
-                                <div
-                                    class="flex items-center text-yellow-400 text-sm"
-                                >
-                                    <span
-                                        class="font-black text-blue-900 mr-2"
-                                        >{{ ferry.rating }}</span
-                                    >
-                                    <svg
-                                        class="w-4 h-4 fill-current"
-                                        viewBox="0 0 20 20"
-                                    >
-                                        <path
-                                            d="M10 15l-5.878 3.09 1.123-6.545L.489 6.91l6.572-.955L10 0l2.939 5.955 6.572.955-4.756 4.635 1.123 6.545z"
-                                        />
-                                    </svg>
-                                    <span
-                                        class="text-blue-300 text-[10px] font-black uppercase ml-2 tracking-widest"
-                                        >({{ ferry.reviews_count }} logs)</span
-                                    >
-                                </div>
+                            <div class="flex items-end justify-end mb-6">
                                 <span
                                     class="bg-blue-50 text-blue-600 px-3 py-1 rounded-lg text-[10px] font-black uppercase tracking-widest border border-blue-100"
                                     >{{ ferry.operator }}</span

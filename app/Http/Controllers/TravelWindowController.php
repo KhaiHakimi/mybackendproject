@@ -255,8 +255,6 @@ class TravelWindowController extends Controller
                 'capacity'      => $ferry->capacity,
                 'length_ft'     => $ferry->length_ft,
                 'amenities'     => $ferry->amenities ?? [],
-                'rating'        => $ferry->rating,
-                'reviews_count' => $ferry->reviews_count ?? 0,
                 'ticket_type'   => $ferry->ticket_type ?? 'Walk-in / Counter',
                 'image_path'    => $ferry->image_path,
                 'trip_count'    => $stats['trip_count'],

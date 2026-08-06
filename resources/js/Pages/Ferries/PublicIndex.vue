@@ -61,12 +61,7 @@
                                 :alt="ferry.name"
                                 class="w-full h-full object-cover transition-transform duration-700 group-hover:scale-110"
                             />
-                            <div
-                                v-if="ferry.rating >= 4.5"
-                                class="absolute top-6 left-6 bg-white/90 backdrop-blur px-4 py-1.5 rounded-full text-[10px] font-black shadow-lg text-emerald-600 border border-emerald-50 uppercase tracking-widest"
-                            >
-                                Top Rated
-                            </div>
+
                             <!-- Title overlay on image -->
                             <div
                                 class="absolute bottom-0 left-0 w-full bg-gradient-to-t from-blue-900/90 via-blue-900/40 to-transparent p-8"
@@ -85,37 +80,6 @@
                         </div>
 
                         <div class="p-8 flex-1 flex flex-col bg-white">
-                            <div class="flex items-center mb-6">
-                                <div class="flex text-yellow-400 text-sm">
-                                    <span v-for="i in 5" :key="i">
-                                        <svg
-                                            v-if="
-                                                i <=
-                                                Math.round(ferry.rating || 0)
-                                            "
-                                            class="w-5 h-5 fill-current"
-                                            viewBox="0 0 20 20"
-                                        >
-                                            <path
-                                                d="M10 15l-5.878 3.09 1.123-6.545L.489 6.91l6.572-.955L10 0l2.939 5.955 6.572.955-4.756 4.635 1.123 6.545z"
-                                            />
-                                        </svg>
-                                        <svg
-                                            v-else
-                                            class="w-5 h-5 text-gray-200 fill-current"
-                                            viewBox="0 0 20 20"
-                                        >
-                                            <path
-                                                d="M10 15l-5.878 3.09 1.123-6.545L.489 6.91l6.572-.955L10 0l2.939 5.955 6.572.955-4.756 4.635 1.123 6.545z"
-                                            />
-                                        </svg>
-                                    </span>
-                                </div>
-                                <span
-                                    class="ml-3 text-sm text-blue-900/40 font-black uppercase tracking-tighter"
-                                    >{{ ferry.rating || 0 }} / 5.0</span
-                                >
-                            </div>
 
                             <div
                                 class="flex items-center space-x-8 text-sm text-blue-900 font-bold mb-6"
